@@ -26,7 +26,13 @@ Thumbs.db
 # Logs
 *.log
 
+# Generated contracts
+temp_contracts/
+
 # Frontend
-frontend/node_modules/
+node_modules/
 frontend/dist/
 frontend/.vite/
+frontend/.nitro/
+frontend/.output/
+frontend/.tanstack/

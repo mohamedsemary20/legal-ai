@@ -1,60 +1,45 @@
-# Legal AI Chat - Setup Instructions
+﻿# Ø§Ù„Ù…Ø³Ø§Ø¹Ø¯ Ø§Ù„Ù‚Ø§Ù†ÙˆÙ†ÙŠ Ø§Ù„Ø°ÙƒÙŠ âš–ï¸
 
-A minimal legal-AI chat prototype with FastAPI backend and React frontend.
+Ù…Ø³Ø§Ø¹Ø¯ Ù‚Ø§Ù†ÙˆÙ†ÙŠ Ø¨Ø§Ù„Ø¹Ø±Ø¨ÙŠØ© Ù…ØªØ®ØµØµ ÙÙŠ Ø§Ù„Ù‚Ø§Ù†ÙˆÙ† Ø§Ù„Ù…ØµØ±ÙŠ: Ø¥Ø¬Ø§Ø¨Ø§Øª ÙÙˆØ±ÙŠØ© Ø¹Ù† Ø§Ù„Ø£Ø³Ø¦Ù„Ø© Ø§Ù„Ù‚Ø§Ù†ÙˆÙ†ÙŠØ©ØŒ ØªØ­Ù„ÙŠÙ„ Ù…Ø³ØªÙ†Ø¯Ø§Øª PDF/WordØŒ ÙˆØµÙŠØ§ØºØ© Ø¹Ù‚ÙˆØ¯ (Ø¥ÙŠØ¬Ø§Ø±ØŒ Ø¹Ù…Ù„ØŒ Ø§ØªÙØ§Ù‚ÙŠØ§Øª Ø³Ø±ÙŠØ©) Ù‚Ø§Ø¨Ù„Ø© Ù„Ù„ØªÙ†Ø²ÙŠÙ„ ÙƒÙ€ PDF.
 
-## Prerequisites
+## Ø§Ù„ØªÙ‚Ù†ÙŠØ§Øª
 
-- Python 3.8+
-- Node.js 16+
-- OpenAI API key
+- **Ø§Ù„Ø¨Ø§Ùƒ Ø¥Ù†Ø¯**: FastAPI + Groq LLM (`openai/gpt-oss-120b`) + PyMuPDF + fpdf2
+- **Ø§Ù„ÙØ±ÙˆÙ†Øª Ø¥Ù†Ø¯**: React 19 + TanStack Start + Tailwind CSS 4 (Ø¹Ø±Ø¨ÙŠ RTL Ø¨Ø§Ù„ÙƒØ§Ù…Ù„)
 
-## Setup
+## Ø§Ù„Ø¥Ø¹Ø¯Ø§Ø¯
 
-### 1. Backend Setup
+### 1. Ø§Ù„Ø¨Ø§Ùƒ Ø¥Ù†Ø¯
 
 ```bash
-# Install Python dependencies
 pip install -r requirements.txt
-
-# Create .env file with your API key
-cp .env.example .env
-# Edit .env and add your OPENAI_API_KEY
+cp .env.example .env   # Ø«Ù… Ø£Ø¶Ù Ù…ÙØªØ§Ø­ GROQ_API_KEY Ø¯Ø§Ø®Ù„ .env
 ```
 
-### 2. Frontend Setup
+Ù…ÙØªØ§Ø­ Groq Ù…Ø¬Ø§Ù†ÙŠ Ù…Ù† https://console.groq.com
+
+### 2. Ø§Ù„ÙØ±ÙˆÙ†Øª Ø¥Ù†Ø¯
 
 ```bash
 cd frontend
 npm install
 ```
 
-## Running the Application
+## Ø§Ù„ØªØ´ØºÙŠÙ„
 
-### Terminal 1 - Backend
 ```bash
+# Ø§Ù„Ø·Ø±ÙÙŠØ© 1 â€” Ø§Ù„Ø¨Ø§Ùƒ Ø¥Ù†Ø¯ Ø¹Ù„Ù‰ http://localhost:8000
 uvicorn main:app --reload
-```
-Backend runs on http://localhost:8000
 
-### Terminal 2 - Frontend
-```bash
+# Ø§Ù„Ø·Ø±ÙÙŠØ© 2 â€” Ø§Ù„ÙØ±ÙˆÙ†Øª Ø¥Ù†Ø¯ Ø¹Ù„Ù‰ http://localhost:5173
 cd frontend
 npm run dev
 ```
-Frontend runs on http://localhost:5173
 
-## Usage
+## Ø§Ù„Ù…Ø²Ø§ÙŠØ§
 
-1. Open http://localhost:5173 in your browser
-2. Type a legal question in Arabic or English
-3. Get AI-powered responses about Egyptian law
+- ðŸ’¬ **Ø´Ø§Øª Ù‚Ø§Ù†ÙˆÙ†ÙŠ** Ø¨Ø¥Ø¬Ø§Ø¨Ø§Øª Ù…Ù†Ø¸Ù…Ø© (Markdown) Ù…Ø¹ Ø°ÙƒØ± Ø§Ù„Ù…ÙˆØ§Ø¯ ÙˆØ§Ù„Ù‚ÙˆØ§Ù†ÙŠÙ† Ø§Ù„Ù…ØµØ±ÙŠØ©
+- ðŸ“„ **ØªØ­Ù„ÙŠÙ„ Ù…Ø³ØªÙ†Ø¯Ø§Øª**: Ø§Ø±ÙØ¹ PDF Ø£Ùˆ DOCX ÙˆØ§Ø³Ø£Ù„ Ø¹Ù†Ù‡ (Ø­ØªÙ‰ 10 Ù…ÙŠØ¬Ø§Ø¨Ø§ÙŠØª)
+- ðŸ“ **ØµÙŠØ§ØºØ© Ø¹Ù‚ÙˆØ¯**: Ø¹Ù‚Ø¯ Ø¥ÙŠØ¬Ø§Ø± / Ø¹Ù‚Ø¯ Ø¹Ù…Ù„ / Ø§ØªÙØ§Ù‚ÙŠØ© Ø³Ø±ÙŠØ© â€” Ø¨Ø¨Ù†ÙˆØ¯ Ù‚Ø§Ø¨Ù„Ø© Ù„Ù„ØªØ®ØµÙŠØµ ÙˆÙ…Ù„Ø§Ø­Ø¸Ø§Øª Ø®Ø§ØµØ©ØŒ ÙˆØªÙ†Ø²ÙŠÙ„Ù‡Ø§ ÙƒÙ…Ù„Ù PDF Ø¬Ø§Ù‡Ø² Ù„Ù„Ù…Ø±Ø§Ø¬Ø¹Ø©
 
-## Stack
-
-- **Backend**: FastAPI, OpenAI API
-- **Frontend**: React, Vite, Tailwind CSS
-- **Design**: RTL-first, calm green/neutral palette for legal context
-
-## Notes
-
-This is a throwaway/learning build to validate model behavior. No auth, database, file upload, or RAG yet.
+> âš–ï¸ Ù‡Ø°Ù‡ Ù…Ø¹Ù„ÙˆÙ…Ø§Øª Ù‚Ø§Ù†ÙˆÙ†ÙŠØ© Ø¹Ø§Ù…Ø© ÙˆÙ„ÙŠØ³Øª Ù…Ø´ÙˆØ±Ø© Ù‚Ø§Ù†ÙˆÙ†ÙŠØ© Ø±Ø³Ù…ÙŠØ©. Ù„Ù„Ø­Ø§Ù„Ø§Øª Ø§Ù„Ù…Ø­Ø¯Ø¯Ø© ÙŠÙÙ†ØµØ­ Ø¨Ø§Ø³ØªØ´Ø§Ø±Ø© Ù…Ø­Ø§Ù…Ù Ù…Ø®ØªØµ.
