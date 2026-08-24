@@ -27,6 +27,12 @@ except ImportError:
 
 app = FastAPI()
 
+# Extra origins for production deployments (comma-separated in .env)
+# e.g. ALLOWED_ORIGINS=https://my-site.netlify.app,https://my-site.com
+_extra_origins = [
+    o.strip() for o in os.getenv("ALLOWED_ORIGINS", "").split(",") if o.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -34,6 +40,8 @@ app.add_middleware(
         "http://localhost:5174",
         "http://localhost:5175",
         "http://localhost:3000",
+        "http://localhost:8080",
+        *_extra_origins,
     ],
     allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
     allow_credentials=True,
