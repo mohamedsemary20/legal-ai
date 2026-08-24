@@ -5,7 +5,16 @@ import tailwindcss from "@tailwindcss/vite";
 import tsConfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
-  plugins: [tsConfigPaths(), tanstackStart(), viteReact(), tailwindcss()],
+  plugins: [
+    tsConfigPaths(),
+    tanstackStart({
+      spa: {
+        enabled: true,
+      },
+    }),
+    viteReact(),
+    tailwindcss(),
+  ],
   resolve: {
     dedupe: ["react", "react-dom"],
   },
