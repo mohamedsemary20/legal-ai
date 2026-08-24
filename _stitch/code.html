@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+
+<html dir="rtl" lang="ar" style=""><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>مساعد قانوني</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;600;700&amp;family=Be+Vietnam+Pro:wght@400&amp;family=IBM+Plex+Sans:wght@500&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+          darkMode: "class",
+          theme: {
+            extend: {
+              "colors": {
+                      "on-secondary-fixed": "#261900",
+                      "surface-variant": "#e5e2e1",
+                      "on-primary": "#ffffff",
+                      "surface": "#fcf9f8",
+                      "tertiary-fixed": "#e5e2da",
+                      "primary-fixed": "#dbe1ff",
+                      "outline-variant": "#c5c6d2",
+                      "primary-fixed-dim": "#b3c5ff",
+                      "secondary": "#775a19",
+                      "surface-container-lowest": "#ffffff",
+                      "on-secondary-container": "#785a1a",
+                      "secondary-container": "#fed488",
+                      "tertiary-container": "#292923",
+                      "surface-container-low": "#f6f3f2",
+                      "secondary-fixed-dim": "#e9c176",
+                      "on-tertiary-fixed": "#1c1c17",
+                      "on-error-container": "#93000a",
+                      "on-background": "#1b1b1b",
+                      "on-primary-container": "#758dd5",
+                      "outline": "#757682",
+                      "on-surface-variant": "#444650",
+                      "surface-container": "#f0eded",
+                      "on-primary-fixed": "#00174a",
+                      "on-surface": "#1b1b1b",
+                      "error-container": "#ffdad6",
+                      "tertiary": "#141510",
+                      "on-secondary-fixed-variant": "#5d4201",
+                      "primary": "#00113a",
+                      "surface-container-highest": "#e5e2e1",
+                      "error": "#ba1a1a",
+                      "surface-bright": "#fcf9f8",
+                      "inverse-on-surface": "#f3f0ef",
+                      "on-error": "#ffffff",
+                      "surface-tint": "#435b9f",
+                      "on-secondary": "#ffffff",
+                      "inverse-primary": "#b3c5ff",
+                      "inverse-surface": "#313030",
+                      "tertiary-fixed-dim": "#c9c6be",
+                      "on-primary-fixed-variant": "#2a4386",
+                      "on-tertiary-fixed-variant": "#474741",
+                      "primary-container": "#002366",
+                      "secondary-fixed": "#ffdea5",
+                      "surface-container-high": "#eae7e7",
+                      "surface-dim": "#dcd9d9",
+                      "on-tertiary": "#ffffff",
+                      "background": "#fcf9f8",
+                      "on-tertiary-container": "#919088"
+              },
+              "borderRadius": {
+                      "DEFAULT": "0.125rem",
+                      "lg": "0.25rem",
+                      "xl": "0.5rem",
+                      "full": "0.75rem"
+              },
+              "spacing": {
+                      "margin-mobile": "20px",
+                      "margin-desktop": "64px",
+                      "unit": "8px",
+                      "gutter": "24px",
+                      "sidebar-width": "280px",
+                      "container-max": "1440px"
+              },
+              "fontFamily": {
+                      "display-lg": [
+                              "Manrope"
+                      ],
+                      "body-lg": [
+                              "Be Vietnam Pro"
+                      ],
+                      "headline-lg-mobile": [
+                              "Manrope"
+                      ],
+                      "label-sm": [
+                              "IBM Plex Sans"
+                      ],
+                      "body-md": [
+                              "Be Vietnam Pro"
+                      ],
+                      "title-md": [
+                              "Manrope"
+                      ],
+                      "headline-lg": [
+                              "Manrope"
+                      ]
+              },
+              "fontSize": {
+                      "display-lg": [
+                              "48px",
+                              {
+                                      "lineHeight": "60px",
+                                      "letterSpacing": "-0.02em",
+                                      "fontWeight": "700"
+                              }
+                      ],
+                      "body-lg": [
+                              "18px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "headline-lg-mobile": [
+                              "24px",
+                              {
+                                      "lineHeight": "32px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "label-sm": [
+                              "12px",
+                              {
+                                      "lineHeight": "16px",
+                                      "fontWeight": "500"
+                              }
+                      ],
+                      "body-md": [
+                              "16px",
+                              {
+                                      "lineHeight": "24px",
+                                      "fontWeight": "400"
+                              }
+                      ],
+                      "title-md": [
+                              "20px",
+                              {
+                                      "lineHeight": "28px",
+                                      "fontWeight": "600"
+                              }
+                      ],
+                      "headline-lg": [
+                              "32px",
+                              {
+                                      "lineHeight": "40px",
+                                      "fontWeight": "600"
+                              }
+                      ]
+              }
+            },
+          }
+        }
+    </script>
+<style>
+        body {
+            background-color: #fcf9f8;
+            color: #1b1b1b;
+        }
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex bg-background font-body-md overflow-hidden">
+<!-- SideNavBar -->
+<nav class="hidden md:flex flex-col bg-primary h-full w-[280px] fixed top-0 right-0 z-40 border-l border-outline-variant/20 shadow-sm text-secondary">
+<!-- Header -->
+<div class="p-6 border-b border-outline-variant/10">
+<div class="flex items-center gap-3">
+<span class="material-symbols-outlined text-3xl" style="font-variation-settings: 'FILL' 1;">account_balance</span>
+<div>
+<h1 class="font-display-lg text-title-md font-bold text-secondary text-xl">مساعدك القانوني</h1>
+<p class="font-label-sm text-label-sm text-secondary/70 opacity-80">نظام العدالة الذكي</p>
+</div>
+</div>
+</div>
+<!-- CTA -->
+<div class="p-4">
+<button class="w-full bg-secondary text-on-secondary rounded-xl py-3 px-4 flex items-center justify-center gap-2 hover:bg-secondary/90 transition-colors shadow-sm font-title-md text-title-md scale-95 active:scale-90 transition-transform">
+<span class="material-symbols-outlined text-xl">add</span>
+                محادثة جديدة
+            </button>
+</div>
+<!-- Navigation Links -->
+<div class="flex-1 overflow-y-auto py-2">
+<!-- Active Item: المحادثات (Chats) -->
+<a class="bg-secondary-container text-on-secondary-container rounded-xl mx-2 my-1 flex items-center p-3 gap-3 font-title-md text-title-md" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">chat</span>
+                المحادثات
+            </a>
+<!-- Inactive Item: المستندات (Documents) -->
+<a class="hover:bg-on-primary/10 mx-2 my-1 flex items-center p-3 gap-3 rounded-xl transition-colors duration-200 font-title-md text-title-md text-secondary" href="#">
+<span class="material-symbols-outlined">description</span>
+                المستندات
+            </a>
+<!-- Inactive Item: صياغة عقد (Contract Drafting) -->
+<a class="hover:bg-on-primary/10 mx-2 my-1 flex items-center p-3 gap-3 rounded-xl transition-colors duration-200 font-title-md text-title-md text-secondary" href="#">
+<span class="material-symbols-outlined">edit_document</span>
+                صياغة عقد
+            </a>
+</div>
+<!-- Footer Links -->
+<div class="p-4 border-t border-outline-variant/10">
+<a class="hover:bg-on-primary/10 mx-2 my-1 flex items-center p-3 gap-3 rounded-xl transition-colors duration-200 font-title-md text-title-md text-secondary" href="#">
+<span class="material-symbols-outlined">settings</span>
+                الإعدادات
+            </a>
+<a class="hover:bg-on-primary/10 mx-2 my-1 flex items-center p-3 gap-3 rounded-xl transition-colors duration-200 font-title-md text-title-md text-secondary" href="#">
+<span class="material-symbols-outlined">contact_support</span>
+                الدعم
+            </a>
+</div>
+</nav>
+<!-- Main Content Area -->
+<main class="flex-1 md:pr-[280px] flex flex-col h-screen relative">
+<!-- TopAppBar -->
+<header class="docked full-width top-0 bg-surface/80 backdrop-blur-md flex flex-row-reverse justify-between items-center w-full h-16 px-6 z-30">
+<!-- Brand / Product Name -->
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary text-2xl" style="font-variation-settings: 'FILL' 1;">gavel</span>
+<h2 class="font-headline-lg text-primary font-bold text-title-md border-b-2 border-secondary pb-1 text-xl">محادثة جديدة</h2>
+</div>
+<!-- Trailing Actions -->
+<div class="flex items-center gap-4 text-on-surface-variant">
+<button class="opacity-80 hover:opacity-100 transition-opacity hover:text-secondary transition-colors p-2 rounded-full hover:bg-surface-variant/50">
+<span class="material-symbols-outlined">history</span>
+</button>
+<button class="opacity-80 hover:opacity-100 transition-opacity hover:text-secondary transition-colors p-2 rounded-full hover:bg-surface-variant/50">
+<span class="material-symbols-outlined">account_circle</span>
+</button>
+</div>
+</header>
+<!-- Chat History Sidebar (Inner) -->
+<div class="absolute right-0 md:right-[280px] top-16 bottom-[88px] w-64 border-l border-outline-variant/30 bg-surface hidden lg:block overflow-y-auto">
+<div class="p-4 border-b border-outline-variant/20">
+<h3 class="font-title-md text-on-surface-variant text-sm font-semibold mb-2 font-bold">السجل</h3>
+</div>
+<div class="p-2">
+<div class="bg-surface-container-low rounded-xl p-3 border-r-4 border-secondary cursor-pointer hover:bg-surface-container transition-colors mb-2">
+<h4 class="font-title-md text-on-surface text-sm font-bold truncate">محادثة جديدة</h4>
+<p class="font-label-sm text-on-surface-variant text-xs truncate mt-1">ابدأ محادثة جديدة...</p>
+</div>
+</div>
+</div>
+<!-- Chat Canvas (Empty State) -->
+<div class="flex-1 flex flex-col items-center p-8 bg-[#F5F2E9] overflow-y-auto w-full lg:pr-64" style="background-image: linear-gradient(rgba(245, 242, 233, 0.85), rgba(245, 242, 233, 0.85)), url('https://lh3.googleusercontent.com/aida-public/AB6AXuAWuu5mP44J7CR5t58es4GO9Iz-qC2Pk5VcdFzgzvCgiQ4uGy9NBcOSoKpAr939nBso8Kg4F3O9jVUQphwUVDZLSdy0zNuCwDFpflE1awMofS7nXzjV48OyiwqariXwnaWPrMKC4XPXlS02TigK47GqKzVovDTH1Xn8-6ulH8IDCXXdxwc5Qno4q_nHK1idcGWvMMlghED5ftbKvJkwJD5Xtz5Zx7K5vRTpSF11aTiIG_G3sCsQloAUBA'); background-repeat: no-repeat; background-position: center; background-size: contain; background-attachment: fixed;"><div class="w-full max-w-4xl mx-auto flex flex-col gap-6 p-4 md:p-8">
+<!-- User Message -->
+<div class="flex flex-col items-end">
+<div class="bg-surface-container-low text-on-surface p-4 rounded-xl rounded-tr-none shadow-sm max-w-[85%] border border-outline-variant/20">
+<p class="font-body-lg leading-relaxed font-semibold">كيف يمكنني صياغة عقد إيجار تجاري يضمن حقوقي كمستأجر؟</p>
+</div>
+<span class="text-xs text-on-surface-variant mt-1 px-2">أنت</span>
+</div>
+<!-- AI Message -->
+<div class="flex flex-col items-start">
+<div class="flex gap-3 max-w-[90%]">
+<div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center shrink-0 mt-1">
+<span class="material-symbols-outlined text-secondary text-lg" style="font-variation-settings: 'FILL' 1;">gavel</span>
+</div>
+<div class="bg-surface-container-lowest text-on-surface p-4 rounded-xl rounded-tl-none shadow-sm border border-outline-variant/30">
+<p class="font-body-lg leading-relaxed font-medium">
+          أهلاً بك. لصياغة عقد إيجار تجاري يحمي حقوقك كمستأجر، يجب التركيز على عدة بنود جوهرية: تحديد مدة الإيجار بدقة، توضيح التزامات الصيانة، شروط إنهاء العقد المبكر، وضمان حق تجديد العقد. هل تود أن نبدأ بتحديد النشاط التجاري لتخصيص البنود؟
+        </p>
+</div>
+</div>
+<span class="text-xs text-on-surface-variant mt-1 mr-11">المساعد القانوني</span>
+</div>
+</div></div>
+<!-- Chat Input Area -->
+<div class="h-[88px] bg-surface border-t border-outline-variant/20 p-4 px-6 flex items-center justify-center w-full lg:pr-64 shrink-0">
+<div class="max-w-4xl w-full flex items-center gap-3 bg-surface-container-lowest border border-outline-variant/40 rounded-full px-2 py-2 shadow-sm focus-within:border-secondary focus-within:ring-1 focus-within:ring-secondary transition-all">
+<!-- Attachment Button -->
+<button class="p-2 text-on-surface-variant hover:text-secondary transition-colors rounded-full hover:bg-surface-variant/50 flex-shrink-0">
+<span class="material-symbols-outlined">attach_file</span>
+</button>
+<!-- Input Field -->
+<input class="flex-1 bg-transparent border-none focus:ring-0 text-on-surface font-body-md placeholder-on-surface-variant/50 h-10 px-2 font-semibold" dir="rtl" placeholder="اكتب سؤالك هنا..." type="text"/>
+<!-- Send Button -->
+<button class="w-10 h-10 bg-primary text-on-primary rounded-full flex items-center justify-center hover:bg-primary-container transition-colors shadow-sm flex-shrink-0">
+<span class="material-symbols-outlined transform rotate-180 text-sm" style="font-variation-settings: 'FILL' 1;">send</span>
+</button>
+</div>
+</div>
+</main>
+</body></html>

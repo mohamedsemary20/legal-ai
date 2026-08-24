@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm install *)",
+      "Bash(npx tailwindcss *)",
+      "Bash(python -m pip list)",
+      "Bash(pip install *)",
+      "Bash(python *)",
+      "Bash(curl -s -X POST http://localhost:8000/api/chat -H 'Content-Type: application/json' -d '{\"message\": \"ما هي حقوق المستأجر في مصر؟\", \"history\": []}')",
+      "Bash(curl -s http://localhost:8000/health)",
+      "Bash(npm run *)",
+      "Bash(curl -s http://localhost:5173)",
+      "Bash(curl -s \"http://localhost:5173/src/index.css\")",
+      "Bash(curl -s http://localhost:5175)",
+      "Bash(curl -s http://localhost:5175/src/index.css)",
+      "Bash(curl -X POST http://localhost:8000/api/chat -H 'Content-Type: application/json' -d '{\"message\": \"ما هي حقوق المستأجر في مصر؟\", \"history\": []}')",
+      "Bash(curl -s -X POST http://localhost:8000/api/chat -H 'Content-Type: application/json' -d '{\"message\": \"ما هي حقوق المستأجر؟\", \"history\": []}')",
+      "WebFetch(domain:stitch.withgoogle.com)"
+    ]
+  }
+}
