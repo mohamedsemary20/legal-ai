@@ -12,12 +12,7 @@ import {
   type GeneratedContract,
 } from "@/lib/api";
 import { type ContractType } from "@/lib/legal-mock";
-
-const types: { id: ContractType; label: string; emoji: string; hint: string }[] = [
-  { id: "rent", label: "عقد إيجار", emoji: "🏠", hint: "سكني أو تجاري" },
-  { id: "job", label: "عقد عمل", emoji: "💼", hint: "محدد أو غير محدد المدة" },
-  { id: "nda", label: "اتفاقية سرية", emoji: "🔒", hint: "عدم إفشاء المعلومات" },
-];
+import { useLang } from "@/lib/i18n";
 
 const apiTypes: Record<ContractType, ApiContractType> = {
   rent: "rent",
@@ -53,10 +48,17 @@ function buildTerms(type: ContractType, data: Record<string, string>): Record<st
 type Props = { open: boolean; onOpenChange: (v: boolean) => void };
 
 export function ContractModal({ open, onOpenChange }: Props) {
+  const { t, lang, dir } = useLang();
   const [type, setType] = useState<ContractType>("rent");
   const [data, setData] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<GeneratedContract | null>(null);
+
+  const types: { id: ContractType; label: string; emoji: string; hint: string }[] = [
+    { id: "rent", label: t.rentLabel, emoji: "🏠", hint: t.rentHint },
+    { id: "job", label: t.jobLabel, emoji: "💼", hint: t.jobHint },
+    { id: "nda", label: t.ndaLabel, emoji: "🔒", hint: t.ndaHint },
+  ];
 
   const set = (k: string) => (e: { target: { value: string } }) =>
     setData((d) => ({ ...d, [k]: e.target.value }));
@@ -75,7 +77,7 @@ export function ContractModal({ open, onOpenChange }: Props) {
 
   async function submit() {
     if (!data["partyA"] || !data["partyB"]) {
-      toast.error("يرجى إدخال اسمي الطرف الأول والطرف الثاني");
+      toast.error(t.partiesRequired);
       return;
     }
     setLoading(true);
@@ -86,12 +88,13 @@ export function ContractModal({ open, onOpenChange }: Props) {
         party1Name: data["partyA"] ?? "",
         party2Name: data["partyB"] ?? "",
         terms: buildTerms(type, data),
+        lang,
       });
       setResult(contract);
-      toast.success("تم إنشاء العقد بنجاح");
+      toast.success(t.contractSuccess);
     } catch (err) {
-      toast.error("تعذر صياغة العقد", {
-        description: err instanceof Error ? err.message : "يرجى المحاولة مرة أخرى.",
+      toast.error(t.contractError, {
+        description: err instanceof Error ? err.message : t.retryHint,
       });
     } finally {
       setLoading(false);
@@ -104,34 +107,38 @@ export function ContractModal({ open, onOpenChange }: Props) {
     a.href = contractDownloadUrl(result.contract_id);
     a.download = result.filename;
     a.click();
-    toast.success("تم تنزيل العقد");
+    toast.success(t.downloadSuccess);
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        dir="rtl"
+        dir={dir}
         className="max-h-[92vh] overflow-y-auto rounded-xl border-hairline bg-surface p-0 sm:max-w-2xl"
       >
-        <DialogHeader className="hairline-y px-6 pb-4 pt-6 text-right">
-          <DialogTitle className="flex items-center gap-2 text-right text-lg font-semibold text-primary">
+        <DialogHeader className="hairline-y px-6 pb-4 pt-6 text-right rtl:text-right ltr:text-left">
+          <DialogTitle
+            className={`flex items-center gap-2 text-lg font-semibold text-primary ${dir === "rtl" ? "text-right" : "text-left"}`}
+          >
             <FileSignature className="size-5 text-gold" />
-            إنشاء عقد قانوني
+            {t.contractTitle}
           </DialogTitle>
-          <p className="text-xs font-light text-muted-foreground">
-            اختر نوع العقد واملأ البيانات، وسيقوم المساعد بصياغة مسودة قابلة للتعديل.
+          <p
+            className={`text-xs font-light text-muted-foreground ${dir === "rtl" ? "text-right" : "text-left"}`}
+          >
+            {t.contractSub}
           </p>
         </DialogHeader>
 
         <div className="space-y-5 px-6 py-5">
           <div className="grid grid-cols-3 gap-2.5">
-            {types.map((t) => {
-              const active = t.id === type;
+            {types.map((ct) => {
+              const active = ct.id === type;
               return (
                 <button
-                  key={t.id}
+                  key={ct.id}
                   onClick={() => {
-                    setType(t.id);
+                    setType(ct.id);
                     setResult(null);
                   }}
                   className={`rounded-lg border p-3 text-center transition-all duration-200 ${
@@ -140,14 +147,14 @@ export function ContractModal({ open, onOpenChange }: Props) {
                       : "border-hairline bg-card hover:border-primary-soft/50 hover:shadow-soft"
                   }`}
                 >
-                  <div className="text-2xl">{t.emoji}</div>
+                  <div className="text-2xl">{ct.emoji}</div>
                   <div
                     className={`mt-1.5 text-xs font-semibold ${active ? "text-primary" : "text-foreground"}`}
                   >
-                    {t.label}
+                    {ct.label}
                   </div>
                   <div className="mt-0.5 text-[10px] font-light text-muted-foreground">
-                    {t.hint}
+                    {ct.hint}
                   </div>
                 </button>
               );
@@ -155,34 +162,32 @@ export function ContractModal({ open, onOpenChange }: Props) {
           </div>
 
           <div className="grid gap-4 sm:grid-cols-2">
-            {field("partyA", "الطرف الأول", "الاسم الكامل / الشركة")}
-            {field("partyB", "الطرف الثاني", "الاسم الكامل / الشركة")}
-            {type === "rent" && field("address", "عنوان العقار", "المحافظة، الحي، رقم العقار")}
-            {type === "rent" && field("rent", "قيمة الإيجار الشهري", "٥٠٠٠ جنيه")}
-            {type === "job" && field("jobTitle", "المسمى الوظيفي", "مهندس برمجيات")}
-            {type === "job" && field("salary", "الراتب الشهري", "١٥٠٠٠ جنيه")}
-            {type === "nda" && field("purpose", "الغرض من الاتفاقية", "مناقشة شراكة تجارية")}
-            {field("duration", "المدة", "سنة ميلادية واحدة")}
+            {field("partyA", t.partyA, t.namePlaceholder)}
+            {field("partyB", t.partyB, t.namePlaceholder)}
+            {type === "rent" && field("address", t.addressLabel, t.addressPlaceholder)}
+            {type === "rent" && field("rent", t.rentAmountLabel, t.rentAmountPlaceholder)}
+            {type === "job" && field("jobTitle", t.jobTitleLabel, t.jobTitlePlaceholder)}
+            {type === "job" && field("salary", t.salaryLabel, t.salaryPlaceholder)}
+            {type === "nda" && field("purpose", t.purposeLabel, t.purposePlaceholder)}
+            {field("duration", t.durationLabel, t.durationPlaceholder)}
           </div>
 
           <div className="rounded-lg border border-dashed border-gold/50 bg-gold-soft/25 p-4">
             <div className="mb-2 flex items-center gap-2">
               <StickyNote className="size-4 text-gold" />
-              <span className="text-xs font-semibold text-foreground">ملاحظات إضافية</span>
+              <span className="text-xs font-semibold text-foreground">{t.notesLabel}</span>
               <span className="rounded-sm bg-card px-1.5 py-0.5 text-[10px] font-light text-muted-foreground">
-                اختياري
+                {t.optional}
               </span>
             </div>
             <Textarea
               value={data["notes"] ?? ""}
               onChange={set("notes")}
               rows={3}
-              placeholder="أضف أي شروط أو بنود خاصة تريد إضافتها للعقد (اختياري)"
+              placeholder={t.notesPlaceholder}
               className="resize-none rounded-lg border-hairline bg-surface text-sm shadow-none focus-visible:border-gold focus-visible:ring-2 focus-visible:ring-gold/20"
             />
-            <p className="mt-2 text-[11px] font-light text-muted-foreground">
-              ستُرسل هذه الملاحظات للمساعد ليضيف بنودًا مخصصة داخل العقد.
-            </p>
+            <p className="mt-2 text-[11px] font-light text-muted-foreground">{t.notesHint}</p>
           </div>
 
           <div className="flex flex-wrap items-center gap-2.5">
@@ -192,7 +197,7 @@ export function ContractModal({ open, onOpenChange }: Props) {
               className="inline-flex h-10 items-center gap-2 rounded-lg bg-primary px-5 text-sm font-medium text-primary-foreground shadow-soft transition-all hover:bg-primary-soft disabled:cursor-not-allowed disabled:opacity-60"
             >
               {loading && <Loader2 className="size-4 animate-spin" />}
-              {loading ? "جارٍ الصياغة..." : "إنشاء العقد"}
+              {loading ? t.generating : t.generateBtn}
             </button>
             {result && (
               <button
@@ -200,7 +205,7 @@ export function ContractModal({ open, onOpenChange }: Props) {
                 className="inline-flex h-10 items-center gap-2 rounded-lg border border-gold/60 bg-card px-4 text-sm font-medium text-gold transition-all hover:bg-gold-soft/40"
               >
                 <Download className="size-4" />
-                تنزيل العقد
+                {t.downloadBtn}
               </button>
             )}
           </div>
@@ -213,7 +218,7 @@ export function ContractModal({ open, onOpenChange }: Props) {
               <div className="min-w-0 flex-1">
                 <div className="truncate text-sm font-semibold text-primary">{result.filename}</div>
                 <p className="mt-0.5 text-[11px] font-light text-muted-foreground">
-                  مسودة تم إنشاؤها بالذكاء الاصطناعي — تحتاج لمراجعة محامٍ مختص قبل الاستخدام الرسمي
+                  {t.draftNotice}
                 </p>
               </div>
             </div>

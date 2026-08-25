@@ -41,6 +41,7 @@ export async function sendChat(opts: {
   message: string;
   history: { role: ChatRole; content: string }[];
   documentId?: string | null;
+  lang: "ar" | "en";
 }): Promise<string> {
   const res = await fetchWithTimeout(
     `${API_BASE}/api/chat`,
@@ -50,6 +51,7 @@ export async function sendChat(opts: {
       body: JSON.stringify({
         message: opts.message,
         history: opts.history,
+        language: opts.lang,
         ...(opts.documentId ? { document_id: opts.documentId } : {}),
       }),
     },
@@ -78,6 +80,7 @@ export async function generateContract(opts: {
   party1Name: string;
   party2Name: string;
   terms: Record<string, string>;
+  lang: "ar" | "en";
 }): Promise<GeneratedContract> {
   const res = await fetchWithTimeout(
     `${API_BASE}/api/documents/generate-contract`,
@@ -88,6 +91,7 @@ export async function generateContract(opts: {
         contract_type: opts.contractType,
         party1_name: opts.party1Name,
         party2_name: opts.party2Name,
+        language: opts.lang,
         terms: opts.terms,
       }),
     },

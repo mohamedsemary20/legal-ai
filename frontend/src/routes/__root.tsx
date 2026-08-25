@@ -11,22 +11,22 @@ import { useEffect, type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { Toaster } from "@/components/ui/sonner";
+import { LanguageProvider, useLang } from "@/lib/i18n";
 
 function NotFoundComponent() {
+  const { t } = useLang();
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-7xl font-bold text-foreground">٤٠٤</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">الصفحة غير موجودة</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          الصفحة التي تبحث عنها غير متاحة أو تم نقلها.
-        </p>
+        <h1 className="text-7xl font-bold text-foreground">{t.notFoundCode}</h1>
+        <h2 className="mt-4 text-xl font-semibold text-foreground">{t.notFoundTitle}</h2>
+        <p className="mt-2 text-sm text-muted-foreground">{t.notFoundDesc}</p>
         <div className="mt-6">
           <Link
             to="/"
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            العودة للرئيسية
+            {t.backHome}
           </Link>
         </div>
       </div>
@@ -37,16 +37,13 @@ function NotFoundComponent() {
 function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
   const router = useRouter();
+  const { t } = useLang();
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          تعذّر تحميل هذه الصفحة
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          حدث خطأ غير متوقع. يمكنك المحاولة مرة أخرى أو العودة للرئيسية.
-        </p>
+        <h1 className="text-xl font-semibold tracking-tight text-foreground">{t.loadErrorTitle}</h1>
+        <p className="mt-2 text-sm text-muted-foreground">{t.loadErrorDesc}</p>
         <div className="mt-6 flex flex-wrap justify-center gap-2">
           <button
             onClick={() => {
@@ -55,13 +52,13 @@ function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
             }}
             className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
           >
-            حاول مجددًا
+            {t.tryAgain}
           </button>
           <a
             href="/"
             className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
           >
-            الرئيسية
+            {t.home}
           </a>
         </div>
       </div>
@@ -116,9 +113,16 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
-      <Outlet />
-      <Toaster position="top-center" dir="rtl" />
+      <LanguageProvider>
+        {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+        <Outlet />
+        <ToasterHost />
+      </LanguageProvider>
     </QueryClientProvider>
   );
+}
+
+function ToasterHost() {
+  const { lang, dir } = useLang();
+  return <Toaster position="top-center" dir={dir} key={lang} />;
 }

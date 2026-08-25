@@ -1,6 +1,7 @@
 import { MessageSquarePlus, FileSignature, X } from "lucide-react";
 import { Scales } from "./Scales";
-import { relativeDate, type Conversation } from "@/lib/legal-mock";
+import { type Conversation } from "@/lib/legal-mock";
+import { useLang, relativeDate } from "@/lib/i18n";
 
 type Props = {
   conversations: Conversation[];
@@ -11,14 +12,8 @@ type Props = {
   onClose?: () => void;
 };
 
-export function Sidebar({
-  conversations,
-  activeId,
-  onSelect,
-  onNew,
-  onContract,
-  onClose,
-}: Props) {
+export function Sidebar({ conversations, activeId, onSelect, onNew, onContract, onClose }: Props) {
+  const { t } = useLang();
   return (
     <aside className="flex h-full w-full flex-col bg-sidebar">
       <div className="hairline-y flex items-start gap-3 px-5 py-5">
@@ -27,16 +22,14 @@ export function Sidebar({
         </div>
         <div className="min-w-0 flex-1">
           <h1 className="truncate text-[0.95rem] font-semibold tracking-tight text-primary">
-            المساعد القانوني الذكي
+            {t.appName}
           </h1>
-          <p className="truncate text-[11px] font-light text-muted-foreground">
-            متخصص في القانون المصري
-          </p>
+          <p className="truncate text-[11px] font-light text-muted-foreground">{t.appTagline}</p>
         </div>
         {onClose && (
           <button
             onClick={onClose}
-            aria-label="إغلاق القائمة"
+            aria-label={t.closeMenu}
             className="rounded-md p-1 text-muted-foreground hover:bg-accent hover:text-primary lg:hidden"
           >
             <X className="size-4" />
@@ -50,20 +43,20 @@ export function Sidebar({
           className="flex w-full items-center gap-2.5 rounded-lg bg-primary px-3.5 py-2.5 text-sm font-medium text-primary-foreground shadow-soft transition-all hover:bg-primary-soft focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-soft/40"
         >
           <MessageSquarePlus className="size-4" />
-          محادثة جديدة
+          {t.newChat}
         </button>
         <button
           onClick={onContract}
           className="flex w-full items-center gap-2.5 rounded-lg border border-gold/50 bg-card px-3.5 py-2.5 text-sm font-medium text-foreground transition-all hover:bg-gold-soft/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-gold/30"
         >
           <FileSignature className="size-4 text-gold" />
-          إنشاء عقد
+          {t.createContract}
         </button>
       </div>
 
       <div className="px-5 pb-2">
         <span className="text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">
-          المحادثات
+          {t.conversations}
         </span>
       </div>
 
@@ -74,7 +67,7 @@ export function Sidebar({
             <button
               key={c.id}
               onClick={() => onSelect(c.id)}
-              className={`group relative w-full rounded-lg px-3 py-2.5 text-right transition-all duration-200 ${
+              className={`group relative w-full rounded-lg px-3 py-2.5 text-right transition-all duration-200 rtl:text-right ltr:text-left ${
                 active ? "bg-card shadow-soft" : "hover:bg-accent/70"
               }`}
             >
@@ -90,7 +83,7 @@ export function Sidebar({
                 {c.preview}
               </div>
               <div className="mt-1 text-[10px] font-light text-muted-foreground/80">
-                {relativeDate(c.date)}
+                {relativeDate(c.date, t)}
               </div>
             </button>
           );

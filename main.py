@@ -63,6 +63,7 @@ class ChatRequest(BaseModel):
     message: str
     history: List[Message] = []
     document_id: Optional[str] = None
+    language: Literal["ar", "en"] = "ar"
 
 class ChatResponse(BaseModel):
     reply: str
@@ -77,6 +78,7 @@ class ContractRequest(BaseModel):
     party1_name: str
     party2_name: str
     terms: dict  # Contract-specific terms
+    language: Literal["ar", "en"] = "ar"
 
 class ContractResponse(BaseModel):
     contract_id: str
@@ -99,6 +101,7 @@ SYSTEM_PROMPT = """أنت مساعد قانوني ذكي متخصص في الق�
    • فرّق بين المعلومات العامة والمشورة القانونية المحددة
 4. **الأمثلة العملية**: قدم أمثلة واقعية عندما يساعد ذلك في التوضيح
 5. **اللغة**: استخدم العربية الواضحة، وادعم الإنجليزية عند الحاجة
+
 
 ⚖️ **تنبيه مهم**: هذه معلومات قانونية عامة وليست مشورة قانونية رسمية. للحالات المحددة، يُنصح باستشارة محامٍ مختص.
 
@@ -270,6 +273,20 @@ async def chat(request: ChatRequest):
 
         messages = [{"role": "system", "content": SYSTEM_PROMPT}]
 
+        # Language directive: force the reply language to match the UI language
+        if request.language == "en":
+            messages[0]["content"] += (
+                "\n\nLANGUAGE RULE: The user interface is set to English. "
+                "You MUST write your entire answer in clear, professional English, "
+                "even if the user writes in Arabic. Cite Egyptian law sources by their "
+                "English names."
+            )
+        else:
+            messages[0]["content"] += (
+                "\n\nLANGUAGE RULE: The user interface is set to Arabic. "
+                "You MUST write your entire answer in clear, professional Arabic."
+            )
+
         # If document is attached, inject it into system message
         if request.document_id:
             if request.document_id not in documents_store:
@@ -301,7 +318,7 @@ async def chat(request: ChatRequest):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"حدث خطأ غير متوقع: {str(e)}")
 
-def generate_contract_content(contract_type: str, party1: str, party2: str, terms: dict) -> str:
+def generate_contract_content(contract_type: str, party1: str, party2: str, terms: dict, language: str = "ar") -> str:
     """Generate contract clauses using LLM"""
 
     templates = {
@@ -381,11 +398,26 @@ def generate_contract_content(contract_type: str, party1: str, party2: str, term
             f"{notes}"
         )
 
+    system_msg = (
+        "أنت محامٍ مصري متخصص في صياغة العقود القانونية. اكتب النص القانوني فقط بدون أي تنسيق "
+        "Markdown (بدون علامات ** أو ## أو |) — نص عادي مرقّم فقط، لأن النص سيُدرج مباشرة في ملف Word."
+    )
+    if language == "en":
+        prompt += (
+            "\n\nIMPORTANT: Write the ENTIRE contract in formal English legal language, "
+            "including all headings and clauses. Reference Egyptian law in English."
+        )
+        system_msg = (
+            "You are an Egyptian lawyer specialized in drafting legal contracts. Write only the "
+            "legal text with no Markdown formatting (no ** or ## or |) — plain numbered text only, "
+            "because the text will be inserted directly into a Word/PDF document."
+        )
+
     try:
         response = groq_client.chat.completions.create(
             model="openai/gpt-oss-120b",
             messages=[
-                {"role": "system", "content": "أنت محامٍ مصري متخصص في صياغة العقود القانونية. اكتب النص القانوني فقط بدون أي تنسيق Markdown (بدون علامات ** أو ## أو |) — نص عادي مرقّم فقط، لأن النص سيُدرج مباشرة في ملف Word."},
+                {"role": "system", "content": system_msg},
                 {"role": "user", "content": prompt}
             ],
             temperature=0.5,
@@ -421,13 +453,21 @@ def _arabic_font_paths():
     return r"C:\Windows\Fonts\tahoma.ttf", r"C:\Windows\Fonts\tahomabd.ttf"
 
 
+def _contains_arabic(text: str) -> bool:
+    import re
+    return re.search(r'[\u0600-\u06FF]', text) is not None
+
+
 def create_contract_pdf(contract_text: str, filepath: str):
     """Build the final PDF contract with proper Arabic RTL text shaping"""
     import re
 
     from fpdf import FPDF
 
-    def safe_multi_cell(pdf: FPDF, text: str, height: float = 7, align: str = "R"):
+    is_rtl = _contains_arabic(contract_text)
+    align = "R" if is_rtl else "L"
+
+    def safe_multi_cell(pdf: FPDF, text: str, height: float = 7, align: str = align):
         """Render a line, degrading shaping gracefully if the shaping engine chokes"""
         # In RTL mode fpdf2 leaves x at the right margin after a cell — reset it,
         # otherwise the next line has no horizontal space left
@@ -455,8 +495,17 @@ def create_contract_pdf(contract_text: str, filepath: str):
     # Red disclaimer banner
     pdf.set_font("arabic", "B", 12)
     pdf.set_text_color(220, 0, 0)
-    pdf.set_text_shaping(direction="rtl")
-    safe_multi_cell(pdf, "مسودة تم إنشاؤها بالذكاء الاصطناعي - تحتاج لمراجعة محامٍ مختص قبل الاستخدام الرسمي", align="C")
+    if is_rtl:
+        pdf.set_text_shaping(direction="rtl")
+    else:
+        pdf.set_text_shaping(direction="ltr")
+    safe_multi_cell(
+        pdf,
+        "مسودة تم إنشاؤها بالذكاء الاصطناعي - تحتاج لمراجعة محامٍ مختص قبل الاستخدام الرسمي"
+        if is_rtl
+        else "AI-generated draft - must be reviewed by a licensed lawyer before official use",
+        align=align,
+    )
     pdf.ln(4)
 
     # Contract body
@@ -474,20 +523,35 @@ def create_contract_pdf(contract_text: str, filepath: str):
     pdf.ln(8)
     col_width = (pdf.w - pdf.l_margin - pdf.r_margin) / 2
     today = datetime.now().strftime("%Y-%m-%d")
-    rows = [
-        ("الطرف الأول:", "الطرف الثاني:"),
-        ("التوقيع:", "التوقيع:"),
-        (f"التاريخ: {today}", f"التاريخ: {today}"),
-    ]
+    if is_rtl:
+        rows = [
+            ("الطرف الأول:", "الطرف الثاني:"),
+            ("التوقيع:", "التوقيع:"),
+            (f"التاريخ: {today}", f"التاريخ: {today}"),
+        ]
+    else:
+        rows = [
+            ("First Party:", "Second Party:"),
+            ("Signature:", "Signature:"),
+            (f"Date: {today}", f"Date: {today}"),
+        ]
     for right_label, left_label in rows:
-        # In RTL reading order the first party appears on the right side
         y = pdf.get_y() + 6
-        right_x = pdf.w - pdf.r_margin
-        left_x = pdf.r_margin
-        pdf.cell(col_width, 8, right_label, align="R")
-        pdf.cell(col_width, 8, left_label, align="R")
-        pdf.line(right_x - 45, y, right_x - 5, y)
-        pdf.line(left_x - 45, y, left_x - 5, y)
+        if is_rtl:
+            # In RTL reading order the first party appears on the right side
+            right_x = pdf.w - pdf.r_margin
+            left_x = pdf.r_margin
+            pdf.cell(col_width, 8, right_label, align="R")
+            pdf.cell(col_width, 8, left_label, align="R")
+            pdf.line(right_x - 45, y, right_x - 5, y)
+            pdf.line(left_x - 45, y, left_x - 5, y)
+        else:
+            first_x = pdf.l_margin
+            second_x = pdf.w - pdf.r_margin - col_width
+            pdf.cell(col_width, 8, right_label, align="L")
+            pdf.cell(col_width, 8, left_label, align="R")
+            pdf.line(first_x + 45, y, first_x + col_width - 5, y)
+            pdf.line(second_x + 45, y, second_x + col_width - 5, y)
         pdf.ln(10)
 
     pdf.output(filepath)
@@ -502,21 +566,30 @@ async def generate_contract(request: ContractRequest):
             request.contract_type,
             request.party1_name,
             request.party2_name,
-            request.terms
+            request.terms,
+            language=request.language
         )
 
         # Save to temporary location
         contract_id = str(uuid.uuid4())
         os.makedirs("temp_contracts", exist_ok=True)
         filepath = f"temp_contracts/{contract_id}.pdf"
-        create_contract_pdf(contract_text, filepath)
 
-        contract_types_ar = {
-            "rent": "عقد_إيجار",
-            "employment": "عقد_عمل",
-            "nda": "اتفاقية_سرية"
-        }
-        filename = f"{contract_types_ar.get(request.contract_type, 'عقد')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+        if request.language == "en":
+            contract_types_names = {
+                "rent": "Rent_Contract",
+                "employment": "Employment_Contract",
+                "nda": "NDA"
+            }
+        else:
+            contract_types_names = {
+                "rent": "عقد_إيجار",
+                "employment": "عقد_عمل",
+                "nda": "اتفاقية_سرية"
+            }
+        filename = f"{contract_types_names.get(request.contract_type, 'عقد')}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.pdf"
+
+        create_contract_pdf(contract_text, filepath)
 
         contracts_store[contract_id] = {
             "filename": filename,

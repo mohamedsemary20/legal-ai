@@ -16,13 +16,6 @@ export type Conversation = {
 const now = Date.now();
 const hours = (h: number) => new Date(now - h * 3600_000);
 
-export const suggestedQuestions = [
-  { icon: "🏠", title: "ما حقوقي كمستأجر؟", sub: "قانون الإيجار المصري وحماية المستأجر" },
-  { icon: "💼", title: "كيف أُنشئ عقد عمل؟", sub: "البنود الإلزامية وفق قانون العمل ١٢ لسنة ٢٠٠٣" },
-  { icon: "⚖️", title: "ما إجراءات رفع دعوى مدنية؟", sub: "الخطوات والرسوم والمواعيد القانونية" },
-  { icon: "📜", title: "متى يسقط الحق بالتقادم؟", sub: "مدد التقادم في القانون المدني المصري" },
-];
-
 export const mockConversations: Conversation[] = [
   {
     id: "c1",
@@ -84,21 +77,6 @@ export const mockConversations: Conversation[] = [
   },
 ];
 
-export function relativeDate(d: Date) {
-  const diff = (Date.now() - d.getTime()) / 3600_000;
-  if (diff < 1) return "منذ دقائق";
-  if (diff < 24) return `منذ ${Math.round(diff)} ساعة`;
-  if (diff < 48) return "أمس";
-  return `منذ ${Math.round(diff / 24)} أيام`;
-}
-
-export function groupKey(d: Date): "اليوم" | "أمس" | "أقدم" {
-  const diff = (Date.now() - d.getTime()) / 3600_000;
-  if (diff < 24) return "اليوم";
-  if (diff < 48) return "أمس";
-  return "أقدم";
-}
-
 const answers = [
   `## الإجابة القانونية
 
@@ -142,18 +120,18 @@ export function mockContract(type: ContractType, data: Record<string, string>) {
     type === "rent" ? "عقد إيجار" : type === "job" ? "عقد عمل" : "اتفاقية عدم إفشاء (سرية)";
   const specifics =
     type === "rent"
-      ? `**العين المؤجرة:** ${data['address'] || "—"}\n\n**القيمة الإيجارية:** ${data['rent'] || "—"} جنيه شهريًا\n\n**المدة:** ${data['duration'] || "—"}`
+      ? `**العين المؤجرة:** ${data["address"] || "—"}\n\n**القيمة الإيجارية:** ${data["rent"] || "—"} جنيه شهريًا\n\n**المدة:** ${data["duration"] || "—"}`
       : type === "job"
-        ? `**المسمى الوظيفي:** ${data['jobTitle'] || "—"}\n\n**الأجر الشهري:** ${data['salary'] || "—"} جنيه\n\n**المدة:** ${data['duration'] || "—"}`
-        : `**الغرض من الاتفاقية:** ${data['purpose'] || "—"}\n\n**مدة سريان الالتزام بالسرية:** ${data['duration'] || "—"}`;
+        ? `**المسمى الوظيفي:** ${data["jobTitle"] || "—"}\n\n**الأجر الشهري:** ${data["salary"] || "—"} جنيه\n\n**المدة:** ${data["duration"] || "—"}`
+        : `**الغرض من الاتفاقية:** ${data["purpose"] || "—"}\n\n**مدة سريان الالتزام بالسرية:** ${data["duration"] || "—"}`;
 
   return `# ${title}
 
 إنه في يوم ${new Date().toLocaleDateString("ar-EG")} تم الاتفاق بين كل من:
 
-**الطرف الأول:** ${data['partyA'] || "—"}
+**الطرف الأول:** ${data["partyA"] || "—"}
 
-**الطرف الثاني:** ${data['partyB'] || "—"}
+**الطرف الثاني:** ${data["partyB"] || "—"}
 
 ## البند الأول — موضوع العقد
 ${specifics}
@@ -166,8 +144,8 @@ ${specifics}
 ## البند الثالث — الفسخ
 يحق للطرف المتضرر فسخ العقد مع التعويض عند إخلال الطرف الآخر بأي بند جوهري.
 ${
-  data['notes']
-    ? `\n## البند الرابع — شروط خاصة\nبناءً على اتفاق الطرفين، تُضاف البنود التالية:\n\n> ${data['notes']}\n`
+  data["notes"]
+    ? `\n## البند الرابع — شروط خاصة\nبناءً على اتفاق الطرفين، تُضاف البنود التالية:\n\n> ${data["notes"]}\n`
     : ""
 }
 ## البند الأخير — الاختصاص القضائي

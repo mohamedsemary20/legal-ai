@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
-import { Menu, Paperclip, Send, X, FileText } from "lucide-react";
+import { Menu, Paperclip, Send, X, FileText, Languages } from "lucide-react";
 import { toast } from "sonner";
 
 import { Sidebar } from "@/components/legal/Sidebar";
@@ -9,7 +9,8 @@ import { ContractModal } from "@/components/legal/ContractModal";
 import { Markdown } from "@/components/legal/Markdown";
 import { Scales } from "@/components/legal/Scales";
 import { sendChat, uploadDocument } from "@/lib/api";
-import { suggestedQuestions, type Conversation, type Message } from "@/lib/legal-mock";
+import { type Conversation, type Message } from "@/lib/legal-mock";
+import { useLang } from "@/lib/i18n";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -26,7 +27,7 @@ export const Route = createFileRoute("/")({
         content: "استشارات قانونية فورية وصياغة عقود وفق القانون المصري.",
       },
       { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
+      { property: "twitter:card", content: "summary_large_image" },
     ],
   }),
   component: Index,
@@ -35,16 +36,9 @@ export const Route = createFileRoute("/")({
 const MAX_SIZE = 10 * 1024 * 1024;
 
 function Index() {
-  const [conversations, setConversations] = useState<Conversation[]>([
-    {
-      id: crypto.randomUUID(),
-      title: "محادثة جديدة",
-      preview: "ابدأ بطرح سؤالك القانوني",
-      date: new Date(),
-      messages: [],
-    },
-  ]);
-  const [activeId, setActiveId] = useState(() => conversations[0]!.id);
+  const { t, lang, dir, toggle } = useLang();
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [activeId, setActiveId] = useState("");
   const [input, setInput] = useState("");
   const [thinking, setThinking] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -58,11 +52,41 @@ function Index() {
   const fileRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
-  const active = conversations.find((c) => c.id === activeId)!;
+  // Seed/reset the default conversation whenever the language changes
+  useEffect(() => {
+    setConversations((cs) => {
+      if (cs.length === 1 && cs[0].messages.length === 0) {
+        return [
+          {
+            id: cs[0].id,
+            title: t.defaultTitle,
+            preview: t.defaultPreview,
+            date: new Date(),
+            messages: [],
+          },
+        ];
+      }
+      return cs;
+    });
+    if (!activeId) {
+      const c: Conversation = {
+        id: crypto.randomUUID(),
+        title: t.defaultTitle,
+        preview: t.defaultPreview,
+        date: new Date(),
+        messages: [],
+      };
+      setConversations([c]);
+      setActiveId(c.id);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lang]);
+
+  const active = conversations.find((c) => c.id === activeId) ?? conversations[0];
 
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [active.messages.length, thinking]);
+  }, [active?.messages.length, thinking]);
 
   function updateActive(fn: (c: Conversation) => Conversation) {
     setConversations((cs) => cs.map((c) => (c.id === activeId ? fn(c) : c)));
@@ -70,7 +94,7 @@ function Index() {
 
   async function send(text: string) {
     const content = text.trim();
-    if (!content || thinking) return;
+    if (!content || thinking || !active) return;
     const userMsg: Message = {
       id: crypto.randomUUID(),
       role: "user",
@@ -79,28 +103,24 @@ function Index() {
     };
     const history = active.messages.map((m) => ({ role: m.role, content: m.content }));
     const documentId = attachment?.documentId ?? null;
-    const nextMessages = [...active.messages, userMsg];
     updateActive((c) => ({
       ...c,
       title: c.messages.length === 0 ? content.slice(0, 40) : c.title,
       preview: content,
-      messages: nextMessages,
+      messages: [...c.messages, userMsg],
     }));
     setInput("");
     setAttachment(null);
     setThinking(true);
     try {
-      const answer = await sendChat({ message: content, history, documentId });
+      const answer = await sendChat({ message: content, history, documentId, lang });
       updateActive((c) => ({
         ...c,
         messages: [...c.messages, { id: crypto.randomUUID(), role: "assistant", content: answer }],
       }));
     } catch (err) {
-      toast.error("تعذر الحصول على إجابة", {
-        description:
-          err instanceof Error
-            ? err.message
-            : "تأكد من تشغيل الخادم على المنفذ ٨٠٠٠ ثم حاول مجددًا.",
+      toast.error(t.chatError, {
+        description: err instanceof Error ? err.message : t.chatErrorDesc,
       });
     } finally {
       setThinking(false);
@@ -110,8 +130,8 @@ function Index() {
   function newChat() {
     const c: Conversation = {
       id: crypto.randomUUID(),
-      title: "محادثة جديدة",
-      preview: "ابدأ بطرح سؤالك القانوني",
+      title: t.defaultTitle,
+      preview: t.defaultPreview,
       date: new Date(),
       messages: [],
     };
@@ -126,21 +146,21 @@ function Index() {
     if (!f) return;
     const ok = /\.(pdf|docx)$/i.test(f.name);
     if (!ok) {
-      toast.error("نوع الملف غير مدعوم", { description: "المسموح: PDF أو Word (DOCX) فقط" });
+      toast.error(t.fileTypeError, { description: t.fileTypeDesc });
       return;
     }
     if (f.size > MAX_SIZE) {
-      toast.error("حجم الملف كبير جدًا", { description: "الحد الأقصى ١٠ ميجابايت" });
+      toast.error(t.sizeError, { description: t.sizeErrorDesc });
       return;
     }
     setUploading(true);
     try {
       const doc = await uploadDocument(f);
       setAttachment({ name: doc.filename, size: f.size, documentId: doc.document_id });
-      toast.success("تم إرفاق المستند وتحليله");
+      toast.success(t.uploadSuccess);
     } catch (err) {
-      toast.error("تعذر رفع المستند", {
-        description: err instanceof Error ? err.message : "يرجى المحاولة مرة أخرى.",
+      toast.error(t.uploadError, {
+        description: err instanceof Error ? err.message : t.retryHint,
       });
     } finally {
       setUploading(false);
@@ -165,8 +185,8 @@ function Index() {
   );
 
   return (
-    <div className="flex h-screen overflow-hidden bg-background">
-      {/* Sidebar (right in RTL) */}
+    <div className="flex h-screen overflow-hidden bg-background" dir={dir}>
+      {/* Sidebar (right in RTL / left in LTR) */}
       <div className="order-1 hidden w-72 shrink-0 border-l border-hairline lg:block">
         {sidebar}
       </div>
@@ -189,7 +209,7 @@ function Index() {
         <header className="hairline-y flex items-center gap-3 bg-surface/80 px-4 py-3.5 backdrop-blur sm:px-6">
           <button
             onClick={() => setDrawer(true)}
-            aria-label="فتح القائمة"
+            aria-label={t.openMenu}
             className="rounded-md p-2 text-primary hover:bg-accent lg:hidden"
           >
             <Menu className="size-5" />
@@ -199,37 +219,45 @@ function Index() {
               <Scales className="size-5" />
             </span>
             <div className="min-w-0">
-              <h2 className="truncate text-sm font-semibold text-primary">{active.title}</h2>
+              <h2 className="truncate text-sm font-semibold text-primary">{active?.title}</h2>
               <p className="truncate text-[11px] font-light text-muted-foreground">
-                مبني على التشريعات المصرية السارية
+                {t.basedOnLaw}
               </p>
             </div>
           </div>
+          <button
+            onClick={toggle}
+            aria-label={lang === "ar" ? "Switch to English" : "التبديل إلى العربية"}
+            title={lang === "ar" ? "English" : "العربية"}
+            className="inline-flex h-8 items-center gap-1.5 self-center rounded-full border border-hairline bg-card px-2.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-accent hover:text-primary"
+          >
+            <Languages className="size-4" />
+            {lang === "ar" ? "EN" : "ع"}
+          </button>
           <span className="hidden shrink-0 items-center gap-1.5 self-center rounded-full border border-gold/40 bg-gold-soft/30 px-2.5 py-1 text-[11px] font-medium text-gold sm:inline-flex">
-            ⚖️ نسخة تجريبية
+            ⚖️ {t.betaVersion}
           </span>
         </header>
 
         <div className="paper flex-1 overflow-y-auto px-4 py-6 sm:px-8">
           <div className="mx-auto max-w-3xl">
-            {active.messages.length === 0 && !thinking ? (
+            {(!active || active.messages.length === 0) && !thinking ? (
               <div className="rise-in flex flex-col items-center pt-8 text-center sm:pt-16">
                 <div className="grid size-20 place-items-center rounded-2xl bg-card text-primary shadow-soft">
                   <Scales className="size-11" />
                 </div>
                 <h3 className="mt-6 text-2xl font-semibold tracking-tight text-primary sm:text-[1.75rem]">
-                  كيف يمكنني مساعدتك قانونيًا اليوم؟
+                  {t.greeting}
                 </h3>
                 <p className="mt-2.5 max-w-md text-sm font-extralight leading-relaxed text-muted-foreground">
-                  اطرح سؤالك بالعربية، أو أرفق مستندًا لتحليله. إجابات مبنية على القانون المصري
-                  بصياغة واضحة ومباشرة.
+                  {t.greetingSub}
                 </p>
                 <div className="mt-9 grid w-full gap-3 sm:grid-cols-2">
-                  {suggestedQuestions.map((q) => (
+                  {t.suggestedQuestions.map((q) => (
                     <button
                       key={q.title}
                       onClick={() => send(q.title)}
-                      className="group rounded-xl border border-hairline bg-card p-4 text-right transition-all duration-200 hover:-translate-y-0.5 hover:border-primary-soft/40 hover:shadow-lifted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-soft/30"
+                      className="group rounded-xl border border-hairline bg-card p-4 text-right transition-all duration-200 hover:-translate-y-0.5 hover:border-primary-soft/40 hover:shadow-lifted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-soft/30 rtl:text-right ltr:text-left"
                     >
                       <div className="flex items-start gap-3">
                         <span className="grid size-9 shrink-0 place-items-center rounded-md bg-secondary text-base transition-colors group-hover:bg-gold-soft/60">
@@ -248,7 +276,7 @@ function Index() {
               </div>
             ) : (
               <div className="space-y-6">
-                {active.messages.map((m) =>
+                {active?.messages.map((m) =>
                   m.role === "user" ? (
                     <div key={m.id} className="rise-in flex justify-end">
                       <div className="max-w-[85%] rounded-xl rounded-tr-sm bg-primary px-4 py-3 text-primary-foreground shadow-soft">
@@ -305,11 +333,11 @@ function Index() {
                 <FileText className="size-3.5 text-gold" />
                 <span className="max-w-[220px] truncate font-medium">{attachment.name}</span>
                 <span className="font-light text-muted-foreground">
-                  {(attachment.size / 1024).toFixed(0)} ك.ب
+                  {(attachment.size / 1024).toFixed(0)} {t.kb}
                 </span>
                 <button
                   onClick={() => setAttachment(null)}
-                  aria-label="إزالة المرفق"
+                  aria-label={t.removeAttachment}
                   className="rounded-sm p-0.5 text-muted-foreground hover:bg-card hover:text-destructive"
                 >
                   <X className="size-3.5" />
@@ -321,7 +349,7 @@ function Index() {
               <button
                 onClick={() => fileRef.current?.click()}
                 disabled={uploading}
-                aria-label="إرفاق مستند"
+                aria-label={t.attachDoc}
                 className="grid size-9 shrink-0 place-items-center rounded-lg text-muted-foreground hover:bg-accent hover:text-primary disabled:cursor-not-allowed disabled:opacity-50"
               >
                 <Paperclip className={uploading ? "size-[18px] animate-pulse" : "size-[18px]"} />
@@ -337,27 +365,27 @@ function Index() {
                   }
                 }}
                 rows={1}
-                placeholder="اكتب سؤالك القانوني هنا..."
+                placeholder={t.placeholder}
                 className="max-h-40 min-h-[38px] flex-1 resize-none bg-transparent py-2 text-sm font-light leading-relaxed outline-none placeholder:text-muted-foreground/70"
               />
               <button
                 onClick={() => send(input)}
                 disabled={!input.trim() || thinking}
-                aria-label="إرسال"
+                aria-label={t.send}
                 className="grid size-9 shrink-0 place-items-center rounded-lg bg-primary text-primary-foreground transition-all hover:bg-primary-soft disabled:cursor-not-allowed disabled:bg-muted disabled:text-muted-foreground"
               >
-                <Send className="size-[17px] -scale-x-100" />
+                <Send className={`size-[17px] ${dir === "rtl" ? "-scale-x-100" : ""}`} />
               </button>
             </div>
 
             <p className="mt-2.5 text-center text-[11px] font-light text-muted-foreground">
-              هذه معلومات قانونية عامة وليست مشورة قانونية رسمية ⚖️
+              {t.disclaimer}
             </p>
           </div>
         </div>
       </main>
 
-      {/* History (left) */}
+      {/* History */}
       <div className="order-3">
         <HistoryPanel conversations={conversations} activeId={activeId} onSelect={setActiveId} />
       </div>
