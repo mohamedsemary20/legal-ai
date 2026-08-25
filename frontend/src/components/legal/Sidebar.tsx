@@ -1,7 +1,8 @@
-import { MessageSquarePlus, FileSignature, X } from "lucide-react";
+import { MessageSquarePlus, FileSignature, X, LogOut } from "lucide-react";
 import { Scales } from "./Scales";
 import { type Conversation } from "@/lib/legal-mock";
 import { useLang, relativeDate } from "@/lib/i18n";
+import { useAuth } from "@/lib/auth";
 
 type Props = {
   conversations: Conversation[];
@@ -14,6 +15,7 @@ type Props = {
 
 export function Sidebar({ conversations, activeId, onSelect, onNew, onContract, onClose }: Props) {
   const { t } = useLang();
+  const { user, signOut } = useAuth();
   return (
     <aside className="flex h-full w-full flex-col bg-sidebar">
       <div className="hairline-y flex items-start gap-3 px-5 py-5">
@@ -89,6 +91,37 @@ export function Sidebar({ conversations, activeId, onSelect, onNew, onContract, 
           );
         })}
       </nav>
+
+      {user && (
+        <div className="hairline-y flex items-center gap-2.5 px-4 py-3">
+          {user.picture_url ? (
+            <img
+              src={user.picture_url}
+              alt=""
+              referrerPolicy="no-referrer"
+              className="size-8 shrink-0 rounded-full ring-1 ring-hairline"
+            />
+          ) : (
+            <span className="grid size-8 shrink-0 place-items-center rounded-full bg-accent text-xs font-semibold text-primary">
+              {user.name.charAt(0) || "?"}
+            </span>
+          )}
+          <div className="min-w-0 flex-1">
+            <div className="truncate text-[12px] font-medium text-foreground">{user.name}</div>
+            <div className="truncate text-[10px] font-light text-muted-foreground">
+              {user.email}
+            </div>
+          </div>
+          <button
+            onClick={signOut}
+            aria-label={t.signOut}
+            title={t.signOut}
+            className="rounded-md p-1.5 text-muted-foreground transition-colors hover:bg-destructive/10 hover:text-destructive"
+          >
+            <LogOut className="size-4 rtl:-scale-x-100" />
+          </button>
+        </div>
+      )}
     </aside>
   );
 }

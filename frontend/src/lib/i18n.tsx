@@ -95,6 +95,15 @@ const ar = {
   home: "الرئيسية",
   serverError: "فشل الاتصال بالخادم",
   invalidReply: "رد غير صالح من الخادم",
+  signinTitle: "المساعد القانوني الذكي",
+  signinTagline: "متخصص في القانون المصري",
+  signinSub: "استشارات قانونية فورية وصياغة عقود وفق القانون المصري",
+  signinButton: "المتابعة باستخدام Google",
+  signinTrust: "محادثاتك خاصة بيك، وبتتحفظ في حسابك بس",
+  signinExpired: "انتهت الجلسة، سجّل دخول تاني",
+  signinError: "تعذّر تسجيل الدخول",
+  signinWorking: "جارٍ تسجيل الدخول...",
+  signOut: "تسجيل الخروج",
 };
 
 type Dict = typeof ar;
@@ -201,6 +210,15 @@ const en: Dict = {
   home: "Home",
   serverError: "Server connection failed",
   invalidReply: "Invalid response from the server",
+  signinTitle: "AI Legal Assistant",
+  signinTagline: "Specialized in Egyptian law",
+  signinSub: "Instant legal consultations and contract drafting under Egyptian law",
+  signinButton: "Continue with Google",
+  signinTrust: "Your chats are private and saved to your account only",
+  signinExpired: "Your session ended — please sign in again",
+  signinError: "Sign-in failed",
+  signinWorking: "Signing in...",
+  signOut: "Sign out",
 };
 
 const dicts: Record<Lang, Dict> = { ar, en };

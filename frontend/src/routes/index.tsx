@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { Menu, Paperclip, Send, X, FileText, Languages } from "lucide-react";
 import { toast } from "sonner";
@@ -8,8 +8,15 @@ import { HistoryPanel } from "@/components/legal/HistoryPanel";
 import { ContractModal } from "@/components/legal/ContractModal";
 import { Markdown } from "@/components/legal/Markdown";
 import { Scales } from "@/components/legal/Scales";
-import { sendChat, uploadDocument } from "@/lib/api";
+import {
+  sendChat,
+  uploadDocument,
+  listConversations,
+  getConversation,
+  createConversation,
+} from "@/lib/api";
 import { type Conversation, type Message } from "@/lib/legal-mock";
+import { DRAFT_KEY, useAuth } from "@/lib/auth";
 import { useLang } from "@/lib/i18n";
 
 export const Route = createFileRoute("/")({
@@ -37,6 +44,10 @@ const MAX_SIZE = 10 * 1024 * 1024;
 
 function Index() {
   const { t, lang, dir, toggle } = useLang();
+  const { token, user, initializing } = useAuth();
+  const navigate = useNavigate();
+
+  const [loadingHistory, setLoadingHistory] = useState(true);
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeId, setActiveId] = useState("");
   const [input, setInput] = useState("");
@@ -52,35 +63,79 @@ function Index() {
   const fileRef = useRef<HTMLInputElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
 
-  // Seed/reset the default conversation whenever the language changes
+  /** IDs of conversations that exist on the server */
+  const syncedIds = useRef<Set<string>>(new Set());
+
+  function makeLocalConversation(): Conversation {
+    return {
+      id: crypto.randomUUID(),
+      title: t.defaultTitle,
+      preview: t.defaultPreview,
+      date: new Date(),
+      messages: [],
+    };
+  }
+
+  function seedLocal() {
+    const c = makeLocalConversation();
+    setConversations([c]);
+    setActiveId(c.id);
+  }
+
+  // Auth guard: signed-out visitors go to the sign-in page
   useEffect(() => {
-    setConversations((cs) => {
-      if (cs.length === 1 && cs[0].messages.length === 0) {
-        return [
-          {
-            id: cs[0].id,
-            title: t.defaultTitle,
-            preview: t.defaultPreview,
-            date: new Date(),
-            messages: [],
-          },
-        ];
-      }
-      return cs;
-    });
-    if (!activeId) {
-      const c: Conversation = {
-        id: crypto.randomUUID(),
-        title: t.defaultTitle,
-        preview: t.defaultPreview,
-        date: new Date(),
-        messages: [],
-      };
-      setConversations([c]);
-      setActiveId(c.id);
+    if (initializing) return;
+    if (!token || !user) {
+      navigate({ to: "/signin", replace: true });
+      return;
     }
+  }, [initializing, token, user, navigate]);
+
+  // Load this user's past conversations from the database
+  useEffect(() => {
+    if (initializing || !token || !user) return;
+    let cancelled = false;
+    setLoadingHistory(true);
+    listConversations()
+      .then((list) => {
+        if (cancelled) return;
+        if (list.length === 0) {
+          seedLocal();
+        } else {
+          const mapped: Conversation[] = list.map((c) => ({
+            id: c.id,
+            title: c.title || t.defaultTitle,
+            preview: c.preview || t.defaultPreview,
+            date: new Date(c.updated_at),
+            messages: [],
+          }));
+          syncedIds.current = new Set(mapped.map((c) => c.id));
+          setConversations(mapped);
+          setActiveId((prev) => (prev && mapped.some((m) => m.id === prev) ? prev : mapped[0]!.id));
+        }
+      })
+      .catch(() => {
+        if (!cancelled) seedLocal();
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingHistory(false);
+      });
+
+    // Restore any unsent input preserved before a session-expiry redirect
+    try {
+      const draft = sessionStorage.getItem(DRAFT_KEY);
+      if (draft) {
+        setInput(draft);
+        sessionStorage.removeItem(DRAFT_KEY);
+      }
+    } catch {
+      /* ignore */
+    }
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [lang]);
+  }, [token, user, initializing]);
 
   const active = conversations.find((c) => c.id === activeId) ?? conversations[0];
 
@@ -88,13 +143,62 @@ function Index() {
     endRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [active?.messages.length, thinking]);
 
+  // Lazily fetch full message history when opening a conversation
+  async function openConversation(id: string) {
+    setActiveId(id);
+    setDrawer(false);
+    const cached = conversations.find((c) => c.id === id);
+    if (!cached || cached.messages.length > 0 || !syncedIds.current.has(id)) return;
+    try {
+      const detail = await getConversation(id);
+      setConversations((cs) =>
+        cs.map((c) =>
+          c.id === id
+            ? {
+                ...c,
+                messages: detail.messages.map((m, i) => ({
+                  id: `${id}-${i}`,
+                  role: m.role as Message["role"],
+                  content: m.content,
+                })),
+              }
+            : c,
+        ),
+      );
+    } catch {
+      /* keep showing cached state */
+    }
+  }
+
   function updateActive(fn: (c: Conversation) => Conversation) {
     setConversations((cs) => cs.map((c) => (c.id === activeId ? fn(c) : c)));
   }
 
+  async function ensurePersisted(conv: Conversation): Promise<string> {
+    if (syncedIds.current.has(conv.id)) return conv.id;
+    const created = await createConversation(conv.title === t.defaultTitle ? "" : conv.title);
+    syncedIds.current.add(created.id);
+    setConversations((cs) => cs.map((c) => (c.id === conv.id ? { ...c, id: created.id } : c)));
+    setActiveId((prev) => (prev === conv.id ? created.id : prev));
+    return created.id;
+  }
+
   async function send(text: string) {
     const content = text.trim();
-    if (!content || thinking || !active) return;
+    if (!content || thinking || !active || !user) return;
+
+    setThinking(true);
+    let conversationId: string;
+    try {
+      conversationId = await ensurePersisted(active);
+    } catch (err) {
+      setThinking(false);
+      toast.error(t.chatError, {
+        description: err instanceof Error ? err.message : t.chatErrorDesc,
+      });
+      return;
+    }
+
     const userMsg: Message = {
       id: crypto.randomUUID(),
       role: "user",
@@ -111,13 +215,27 @@ function Index() {
     }));
     setInput("");
     setAttachment(null);
-    setThinking(true);
     try {
-      const answer = await sendChat({ message: content, history, documentId, lang });
-      updateActive((c) => ({
-        ...c,
-        messages: [...c.messages, { id: crypto.randomUUID(), role: "assistant", content: answer }],
-      }));
+      const answer = await sendChat({
+        message: content,
+        history,
+        documentId,
+        lang,
+        conversationId,
+      });
+      setConversations((cs) =>
+        cs.map((c) =>
+          c.id === conversationId
+            ? {
+                ...c,
+                messages: [
+                  ...c.messages,
+                  { id: crypto.randomUUID(), role: "assistant", content: answer },
+                ],
+              }
+            : c,
+        ),
+      );
     } catch (err) {
       toast.error(t.chatError, {
         description: err instanceof Error ? err.message : t.chatErrorDesc,
@@ -127,14 +245,8 @@ function Index() {
     }
   }
 
-  function newChat() {
-    const c: Conversation = {
-      id: crypto.randomUUID(),
-      title: t.defaultTitle,
-      preview: t.defaultPreview,
-      date: new Date(),
-      messages: [],
-    };
+  async function newChat() {
+    const c = makeLocalConversation();
     setConversations((cs) => [c, ...cs]);
     setActiveId(c.id);
     setDrawer(false);
@@ -167,19 +279,23 @@ function Index() {
     }
   }
 
+  if (initializing || loadingHistory) {
+    return (
+      <div className="flex h-screen items-center justify-center bg-background">
+        <span className="grid size-14 place-items-center rounded-2xl bg-card text-primary shadow-soft">
+          <Scales className="size-8 animate-pulse" />
+        </span>
+      </div>
+    );
+  }
+
   const sidebar = (
     <Sidebar
       conversations={conversations}
       activeId={activeId}
-      onSelect={(id) => {
-        setActiveId(id);
-        setDrawer(false);
-      }}
+      onSelect={openConversation}
       onNew={newChat}
-      onContract={() => {
-        setContractOpen(true);
-        setDrawer(false);
-      }}
+      onContract={() => setContractOpen(true)}
       {...(drawer ? { onClose: () => setDrawer(false) } : {})}
     />
   );
@@ -387,7 +503,11 @@ function Index() {
 
       {/* History */}
       <div className="order-3">
-        <HistoryPanel conversations={conversations} activeId={activeId} onSelect={setActiveId} />
+        <HistoryPanel
+          conversations={conversations}
+          activeId={activeId}
+          onSelect={openConversation}
+        />
       </div>
 
       <ContractModal open={contractOpen} onOpenChange={setContractOpen} />

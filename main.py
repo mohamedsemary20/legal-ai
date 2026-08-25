@@ -1,6 +1,7 @@
-from fastapi import FastAPI, HTTPException, UploadFile, File
+from fastapi import FastAPI, HTTPException, UploadFile, File, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel
 from typing import List, Literal, Optional
 import os
@@ -10,13 +11,149 @@ from docx import Document as DocxDocument
 from docx.shared import Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 import uuid
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 import io
+
+# --- Database (SQLAlchemy + Postgres) ---
+from sqlalchemy import String, Text, ForeignKey, DateTime, Uuid, create_engine
+from sqlalchemy.orm import (
+    DeclarativeBase,
+    Mapped,
+    mapped_column,
+    relationship,
+    sessionmaker,
+    Session,
+)
+
+import jwt as pyjwt
+from google.oauth2 import id_token as google_id_token
+from google.auth.transport import requests as google_requests
 
 load_dotenv()
 
 # Get API keys from environment
 GROQ_API_KEY = os.getenv("GROQ_API_KEY", "")
+GOOGLE_CLIENT_ID = os.getenv("GOOGLE_CLIENT_ID", "")
+JWT_SECRET_KEY = os.getenv("JWT_SECRET_KEY", "")
+JWT_EXPIRES_DAYS = int(os.getenv("JWT_EXPIRES_DAYS", "7"))
+
+db_url = os.environ.get("DATABASE_URL", "").replace(
+    "postgresql://", "postgresql+psycopg2://", 1
+)
+if not db_url:
+    # Local dev fallback so the app still boots without Postgres (auth disabled)
+    db_url = "sqlite:///./local_dev.db"
+
+engine = create_engine(db_url, pool_pre_ping=True)
+SessionLocal = sessionmaker(bind=engine, autoflush=False, expire_on_commit=False)
+
+
+class Base(DeclarativeBase):
+    pass
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    google_sub: Mapped[str] = mapped_column(String(64), unique=True, index=True)
+    email: Mapped[str] = mapped_column(String(320), unique=True, index=True)
+    name: Mapped[str] = mapped_column(String(255))
+    picture_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+    conversations: Mapped[List["Conversation"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+
+
+class Conversation(Base):
+    __tablename__ = "conversations"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    user_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    title: Mapped[str] = mapped_column(String(255), default="")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        onupdate=lambda: datetime.now(timezone.utc),
+    )
+
+    user: Mapped[User] = relationship(back_populates="conversations")
+    messages: Mapped[List["Message"]] = relationship(
+        back_populates="conversation",
+        cascade="all, delete-orphan",
+        order_by="Message.created_at",
+    )
+
+
+class Message(Base):
+    __tablename__ = "messages"
+
+    id: Mapped[uuid.UUID] = mapped_column(Uuid, primary_key=True, default=uuid.uuid4)
+    conversation_id: Mapped[uuid.UUID] = mapped_column(
+        Uuid, ForeignKey("conversations.id", ondelete="CASCADE"), index=True
+    )
+    role: Mapped[str] = mapped_column(String(16))
+    content: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
+    )
+
+    conversation: Mapped[Conversation] = relationship(back_populates="messages")
+
+
+Base.metadata.create_all(engine)
+
+
+def get_db():
+    db = SessionLocal()
+    try:
+        yield db
+    finally:
+        db.close()
+
+
+bearer_scheme = HTTPBearer(auto_error=False)
+
+
+def create_access_token(user_id: uuid.UUID) -> str:
+    payload = {
+        "sub": str(user_id),
+        "exp": datetime.now(timezone.utc) + timedelta(days=JWT_EXPIRES_DAYS),
+        "iat": datetime.now(timezone.utc),
+    }
+    return pyjwt.encode(payload, JWT_SECRET_KEY or "dev-secret", algorithm="HS256")
+
+
+credentials_exception = HTTPException(
+    status_code=401,
+    detail="الجلسة غير صالحة، سجّل دخول من جديد",
+    headers={"WWW-Authenticate": "Bearer"},
+)
+
+
+def get_current_user(
+    credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
+    db: Session = Depends(get_db),
+) -> User:
+    if credentials is None or JWT_SECRET_KEY == "":
+        raise credentials_exception
+    try:
+        payload = pyjwt.decode(credentials.credentials, JWT_SECRET_KEY, algorithms=["HS256"])
+    except pyjwt.PyJWTError:
+        raise credentials_exception
+    user = db.get(User, uuid.UUID(payload["sub"]))
+    if user is None:
+        raise credentials_exception
+    return user
 
 # Initialize Groq client
 try:
@@ -41,6 +178,7 @@ app.add_middleware(
         "http://localhost:5175",
         "http://localhost:3000",
         "http://localhost:8080",
+        "https://egysuitsai.vercel.app",
         *_extra_origins,
     ],
     allow_origin_regex=r"http://(localhost|127\.0\.0\.1):\d+",
@@ -64,6 +202,7 @@ class ChatRequest(BaseModel):
     history: List[Message] = []
     document_id: Optional[str] = None
     language: Literal["ar", "en"] = "ar"
+    conversation_id: str
 
 class ChatResponse(BaseModel):
     reply: str
@@ -72,6 +211,37 @@ class DocumentUploadResponse(BaseModel):
     document_id: str
     filename: str
     word_count: int
+
+class GoogleAuthRequest(BaseModel):
+    credential: str
+
+class UserOut(BaseModel):
+    id: str
+    email: str
+    name: str
+    picture_url: Optional[str] = None
+
+class AuthResponse(BaseModel):
+    access_token: str
+    user: UserOut
+
+class ConversationCreate(BaseModel):
+    title: str = ""
+
+class MessageOut(BaseModel):
+    role: str
+    content: str
+    created_at: datetime
+
+class ConversationSummaryOut(BaseModel):
+    id: str
+    title: str
+    preview: str
+    created_at: datetime
+    updated_at: datetime
+
+class ConversationDetailOut(ConversationSummaryOut):
+    messages: List[MessageOut]
 
 class ContractRequest(BaseModel):
     contract_type: str  # "rent", "employment", "nda"
@@ -168,7 +338,10 @@ async def call_llm(messages: List[dict]) -> str:
         raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/api/documents/upload", response_model=DocumentUploadResponse)
-async def upload_document(file: UploadFile = File(...)):
+async def upload_document(
+    file: UploadFile = File(...),
+    user: User = Depends(get_current_user),
+):
     """Upload and extract text from PDF or DOCX"""
     try:
         # Validate file type
@@ -248,8 +421,123 @@ async def upload_document(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"فشل تحليل الملف: {str(e)}")
 
+@app.post("/api/auth/google", response_model=AuthResponse)
+async def auth_google(request: GoogleAuthRequest, db: Session = Depends(get_db)):
+    """Verify a Google ID token, upsert the user, and issue our own JWT"""
+    if not GOOGLE_CLIENT_ID:
+        raise HTTPException(status_code=500, detail="GOOGLE_CLIENT_ID غير مُعد على الخادم")
+    try:
+        info = google_id_token.verify_oauth2_token(
+            request.credential, google_requests.Request(), GOOGLE_CLIENT_ID
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=401, detail=f"فشل التحقق من حساب جوجل: {str(e)}")
+
+    google_sub = info["sub"]
+    email = info.get("email", "")
+    name = info.get("name", "") or email
+    picture = info.get("picture")
+
+    user = db.query(User).filter(User.google_sub == google_sub).first()
+    if user is None:
+        user = User(google_sub=google_sub, email=email, name=name, picture_url=picture)
+        db.add(user)
+    else:
+        user.name = name
+        user.picture_url = picture
+    db.commit()
+    db.refresh(user)
+
+    return AuthResponse(access_token=create_access_token(user.id), user=UserOut(
+        id=str(user.id), email=user.email, name=user.name, picture_url=user.picture_url
+    ))
+
+
+@app.get("/api/auth/me", response_model=UserOut)
+async def auth_me(user: User = Depends(get_current_user)):
+    return UserOut(id=str(user.id), email=user.email, name=user.name, picture_url=user.picture_url)
+
+
+def _owned_conversation(db: Session, conversation_id: str, user: User) -> Conversation:
+    try:
+        cid = uuid.UUID(conversation_id)
+    except ValueError:
+        raise HTTPException(status_code=400, detail="معرّف محادثة غير صالح")
+    conv = db.get(Conversation, cid)
+    if conv is None:
+        raise HTTPException(status_code=404, detail="المحادثة غير موجودة")
+    if conv.user_id != user.id:
+        raise HTTPException(status_code=403, detail="لا تملك صلاحية الوصول لهذه المحادثة")
+    return conv
+
+
+@app.get("/api/conversations", response_model=List[ConversationSummaryOut])
+async def list_conversations(
+    user: User = Depends(get_current_user), db: Session = Depends(get_db)
+):
+    convs = (
+        db.query(Conversation)
+        .filter(Conversation.user_id == user.id)
+        .order_by(Conversation.updated_at.desc())
+        .all()
+    )
+    out = []
+    for c in convs:
+        last_user_msg = (
+            db.query(Message)
+            .filter(Message.conversation_id == c.id, Message.role == "user")
+            .order_by(Message.created_at.desc())
+            .first()
+        )
+        out.append(ConversationSummaryOut(
+            id=str(c.id),
+            title=c.title,
+            preview=(last_user_msg.content[:120] if last_user_msg else ""),
+            created_at=c.created_at,
+            updated_at=c.updated_at,
+        ))
+    return out
+
+
+@app.post("/api/conversations", response_model=ConversationDetailOut, status_code=201)
+async def create_conversation(
+    body: ConversationCreate,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    conv = Conversation(user_id=user.id, title=body.title)
+    db.add(conv)
+    db.commit()
+    db.refresh(conv)
+    return ConversationDetailOut(
+        id=str(conv.id), title=conv.title, preview="",
+        created_at=conv.created_at, updated_at=conv.updated_at, messages=[],
+    )
+
+
+@app.get("/api/conversations/{conversation_id}", response_model=ConversationDetailOut)
+async def get_conversation(
+    conversation_id: str,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    conv = _owned_conversation(db, conversation_id, user)
+    return ConversationDetailOut(
+        id=str(conv.id),
+        title=conv.title,
+        preview=(conv.messages[-1].content[:120] if conv.messages else ""),
+        created_at=conv.created_at,
+        updated_at=conv.updated_at,
+        messages=[MessageOut(role=m.role, content=m.content, created_at=m.created_at) for m in conv.messages],
+    )
+
+
 @app.post("/api/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest):
+async def chat(
+    request: ChatRequest,
+    user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
     try:
         # Validate message
         if not request.message or not request.message.strip():
@@ -270,6 +558,9 @@ async def chat(request: ChatRequest):
                 status_code=400,
                 detail="تاريخ المحادثة طويل جداً"
             )
+
+        # Conversation must exist and belong to the caller
+        conv = _owned_conversation(db, request.conversation_id, user)
 
         messages = [{"role": "system", "content": SYSTEM_PROMPT}]
 
@@ -310,6 +601,11 @@ async def chat(request: ChatRequest):
                 status_code=500,
                 detail="لم يتم استلام رد من النموذج"
             )
+
+        # Persist both sides of the exchange
+        db.add(Message(conversation_id=conv.id, role="user", content=request.message))
+        db.add(Message(conversation_id=conv.id, role="assistant", content=reply.strip()))
+        db.commit()
 
         return ChatResponse(reply=reply)
 
@@ -558,7 +854,10 @@ def create_contract_pdf(contract_text: str, filepath: str):
 
 
 @app.post("/api/documents/generate-contract", response_model=ContractResponse)
-async def generate_contract(request: ContractRequest):
+async def generate_contract(
+    request: ContractRequest,
+    user: User = Depends(get_current_user),
+):
     """Generate a PDF contract document"""
     try:
         # Generate contract content using LLM
@@ -609,8 +908,20 @@ async def generate_contract(request: ContractRequest):
         raise HTTPException(status_code=500, detail=f"فشل إنشاء العقد: {str(e)}")
 
 @app.get("/api/documents/download/{contract_id}")
-async def download_contract(contract_id: str):
-    """Download generated contract"""
+async def download_contract(
+    contract_id: str,
+    user: User = Depends(get_current_user),
+    token: Optional[str] = None,
+):
+    """Download generated contract (auth via header or ?token= for browser downloads)"""
+    if user is None and token and JWT_SECRET_KEY:
+        try:
+            payload = pyjwt.decode(token, JWT_SECRET_KEY, algorithms=["HS256"])
+            user = SessionLocal().get(User, uuid.UUID(payload["sub"]))
+        except Exception:
+            pass
+    if user is None:
+        raise credentials_exception
     if contract_id not in contracts_store:
         raise HTTPException(status_code=404, detail="العقد غير موجود")
 
