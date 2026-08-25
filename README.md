@@ -1,45 +1,68 @@
-﻿# Ø§Ù„Ù…Ø³Ø§Ø¹Ø¯ Ø§Ù„Ù‚Ø§Ù†ÙˆÙ†ÙŠ Ø§Ù„Ø°ÙƒÙŠ âš–ï¸
+﻿# AI Legal Assistant ⚖️
 
-Ù…Ø³Ø§Ø¹Ø¯ Ù‚Ø§Ù†ÙˆÙ†ÙŠ Ø¨Ø§Ù„Ø¹Ø±Ø¨ÙŠØ© Ù…ØªØ®ØµØµ ÙÙŠ Ø§Ù„Ù‚Ø§Ù†ÙˆÙ† Ø§Ù„Ù…ØµØ±ÙŠ: Ø¥Ø¬Ø§Ø¨Ø§Øª ÙÙˆØ±ÙŠØ© Ø¹Ù† Ø§Ù„Ø£Ø³Ø¦Ù„Ø© Ø§Ù„Ù‚Ø§Ù†ÙˆÙ†ÙŠØ©ØŒ ØªØ­Ù„ÙŠÙ„ Ù…Ø³ØªÙ†Ø¯Ø§Øª PDF/WordØŒ ÙˆØµÙŠØ§ØºØ© Ø¹Ù‚ÙˆØ¯ (Ø¥ÙŠØ¬Ø§Ø±ØŒ Ø¹Ù…Ù„ØŒ Ø§ØªÙØ§Ù‚ÙŠØ§Øª Ø³Ø±ÙŠØ©) Ù‚Ø§Ø¨Ù„Ø© Ù„Ù„ØªÙ†Ø²ÙŠÙ„ ÙƒÙ€ PDF.
+An Arabic-language legal assistant specialized in Egyptian law: instant answers to legal questions, PDF/Word document analysis, and contract drafting (rental, employment, NDAs) with downloadable PDF output.
 
-## Ø§Ù„ØªÙ‚Ù†ÙŠØ§Øª
+## Tech Stack
 
-- **Ø§Ù„Ø¨Ø§Ùƒ Ø¥Ù†Ø¯**: FastAPI + Groq LLM (`openai/gpt-oss-120b`) + PyMuPDF + fpdf2
-- **Ø§Ù„ÙØ±ÙˆÙ†Øª Ø¥Ù†Ø¯**: React 19 + TanStack Start + Tailwind CSS 4 (Ø¹Ø±Ø¨ÙŠ RTL Ø¨Ø§Ù„ÙƒØ§Ù…Ù„)
+- **Backend**: FastAPI + Groq LLM (`openai/gpt-oss-120b`) + PyMuPDF + fpdf2
+- **Frontend**: React 19 + TanStack Start + Tailwind CSS 4 (fully RTL-aware with English support)
 
-## Ø§Ù„Ø¥Ø¹Ø¯Ø§Ø¯
+## Features
 
-### 1. Ø§Ù„Ø¨Ø§Ùƒ Ø¥Ù†Ø¯
+- 💬 **Legal chat** — structured Markdown answers citing Egyptian laws and articles
+- 📄 **Document analysis** — upload a PDF or DOCX (up to 10 MB) and ask questions about it
+- 📝 **Contract drafting** — rental / employment / confidentiality agreements with customizable clauses and special notes, downloadable as a ready-to-review PDF
+- 🔐 **Authentication** — email/password sign-up & sign-in (Google sign-in supported when configured)
+
+## Setup
+
+### 1. Backend
 
 ```bash
 pip install -r requirements.txt
-cp .env.example .env   # Ø«Ù… Ø£Ø¶Ù Ù…ÙØªØ§Ø­ GROQ_API_KEY Ø¯Ø§Ø®Ù„ .env
+cp .env.example .env   # then fill in your keys inside .env
 ```
 
-Ù…ÙØªØ§Ø­ Groq Ù…Ø¬Ø§Ù†ÙŠ Ù…Ù† https://console.groq.com
+Required environment variables:
 
-### 2. Ø§Ù„ÙØ±ÙˆÙ†Øª Ø¥Ù†Ø¯
+| Variable | Description |
+|---|---|
+| `GROQ_API_KEY` | Free key from https://console.groq.com |
+| `JWT_SECRET_KEY` | Random secret used to sign session tokens |
+| `GOOGLE_CLIENT_ID` | (Optional) Google OAuth client ID for Google sign-in |
+| `DATABASE_URL` | (Optional) Postgres URL; falls back to local SQLite |
+
+> Get a free Groq API key at https://console.groq.com
+
+### 2. Frontend
 
 ```bash
 cd frontend
 npm install
 ```
 
-## Ø§Ù„ØªØ´ØºÙŠÙ„
+Optional frontend environment variables (in `frontend/.env`):
+
+| Variable | Description |
+|---|---|
+| `VITE_API_URL` | Backend URL (defaults to `http://localhost:8000`) |
+| `VITE_GOOGLE_CLIENT_ID` | (Optional) enables the Google sign-in button |
+
+## Running
 
 ```bash
-# Ø§Ù„Ø·Ø±ÙÙŠØ© 1 â€” Ø§Ù„Ø¨Ø§Ùƒ Ø¥Ù†Ø¯ Ø¹Ù„Ù‰ http://localhost:8000
+# Terminal 1 — backend on http://localhost:8000
 uvicorn main:app --reload
 
-# Ø§Ù„Ø·Ø±ÙÙŠØ© 2 â€” Ø§Ù„ÙØ±ÙˆÙ†Øª Ø¥Ù†Ø¯ Ø¹Ù„Ù‰ http://localhost:5173
+# Terminal 2 — frontend on http://localhost:5173
 cd frontend
 npm run dev
 ```
 
-## Ø§Ù„Ù…Ø²Ø§ÙŠØ§
+## Deployment
 
-- ðŸ’¬ **Ø´Ø§Øª Ù‚Ø§Ù†ÙˆÙ†ÙŠ** Ø¨Ø¥Ø¬Ø§Ø¨Ø§Øª Ù…Ù†Ø¸Ù…Ø© (Markdown) Ù…Ø¹ Ø°ÙƒØ± Ø§Ù„Ù…ÙˆØ§Ø¯ ÙˆØ§Ù„Ù‚ÙˆØ§Ù†ÙŠÙ† Ø§Ù„Ù…ØµØ±ÙŠØ©
-- ðŸ“„ **ØªØ­Ù„ÙŠÙ„ Ù…Ø³ØªÙ†Ø¯Ø§Øª**: Ø§Ø±ÙØ¹ PDF Ø£Ùˆ DOCX ÙˆØ§Ø³Ø£Ù„ Ø¹Ù†Ù‡ (Ø­ØªÙ‰ 10 Ù…ÙŠØ¬Ø§Ø¨Ø§ÙŠØª)
-- ðŸ“ **ØµÙŠØ§ØºØ© Ø¹Ù‚ÙˆØ¯**: Ø¹Ù‚Ø¯ Ø¥ÙŠØ¬Ø§Ø± / Ø¹Ù‚Ø¯ Ø¹Ù…Ù„ / Ø§ØªÙØ§Ù‚ÙŠØ© Ø³Ø±ÙŠØ© â€” Ø¨Ø¨Ù†ÙˆØ¯ Ù‚Ø§Ø¨Ù„Ø© Ù„Ù„ØªØ®ØµÙŠØµ ÙˆÙ…Ù„Ø§Ø­Ø¸Ø§Øª Ø®Ø§ØµØ©ØŒ ÙˆØªÙ†Ø²ÙŠÙ„Ù‡Ø§ ÙƒÙ…Ù„Ù PDF Ø¬Ø§Ù‡Ø² Ù„Ù„Ù…Ø±Ø§Ø¬Ø¹Ø©
+- **Backend**: Railway (see repo deploy configs)
+- **Frontend**: Vercel
+- Set the environment variables listed above in each platform's dashboard.
 
-> âš–ï¸ Ù‡Ø°Ù‡ Ù…Ø¹Ù„ÙˆÙ…Ø§Øª Ù‚Ø§Ù†ÙˆÙ†ÙŠØ© Ø¹Ø§Ù…Ø© ÙˆÙ„ÙŠØ³Øª Ù…Ø´ÙˆØ±Ø© Ù‚Ø§Ù†ÙˆÙ†ÙŠØ© Ø±Ø³Ù…ÙŠØ©. Ù„Ù„Ø­Ø§Ù„Ø§Øª Ø§Ù„Ù…Ø­Ø¯Ø¯Ø© ÙŠÙÙ†ØµØ­ Ø¨Ø§Ø³ØªØ´Ø§Ø±Ø© Ù…Ø­Ø§Ù…Ù Ù…Ø®ØªØµ.
+> ⚖️ This provides general legal information, not official legal advice. For specific cases, consult a licensed lawyer.
