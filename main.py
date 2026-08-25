@@ -227,13 +227,13 @@ documents_store = {}
 # In-memory storage for generated contracts
 contracts_store = {}
 
-class Message(BaseModel):
+class ChatMessage(BaseModel):
     role: Literal["user", "assistant", "system"]
     content: str
 
 class ChatRequest(BaseModel):
     message: str
-    history: List[Message] = []
+    history: List[ChatMessage] = []
     document_id: Optional[str] = None
     language: Literal["ar", "en"] = "ar"
     conversation_id: str
