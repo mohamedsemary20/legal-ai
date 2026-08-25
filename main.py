@@ -11,11 +11,14 @@ from docx import Document as DocxDocument
 from docx.shared import Pt, RGBColor
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 import uuid
+import hashlib
+import secrets
 from datetime import datetime, timedelta, timezone
 import io
 
 # --- Database (SQLAlchemy + Postgres) ---
 from sqlalchemy import String, Text, ForeignKey, DateTime, Uuid, create_engine
+import sqlalchemy
 from sqlalchemy.orm import (
     DeclarativeBase,
     Mapped,
@@ -60,6 +63,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(320), unique=True, index=True)
     name: Mapped[str] = mapped_column(String(255))
     picture_url: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    password_hash: Mapped[Optional[str]] = mapped_column(String(255), nullable=True)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=lambda: datetime.now(timezone.utc)
     )
@@ -112,6 +116,32 @@ class Message(Base):
 
 Base.metadata.create_all(engine)
 
+# Lightweight migration: add password_hash column to existing users tables
+with engine.connect() as _conn:
+    try:
+        _conn.execute(
+            sqlalchemy.text(
+                "ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)"
+            )
+        )
+        _conn.commit()
+    except Exception:
+        try:
+            _conn.rollback()
+            cols = [
+                row[1]
+                for row in _conn.execute(sqlalchemy.text("PRAGMA table_info(users)"))
+            ]
+            if "password_hash" not in cols:
+                _conn.execute(
+                    sqlalchemy.text(
+                        "ALTER TABLE users ADD COLUMN password_hash VARCHAR(255)"
+                    )
+                )
+                _conn.commit()
+        except Exception:
+            pass
+
 
 def get_db():
     db = SessionLocal()
@@ -124,13 +154,17 @@ def get_db():
 bearer_scheme = HTTPBearer(auto_error=False)
 
 
+def _jwt_secret() -> str:
+    return JWT_SECRET_KEY or "dev-secret"
+
+
 def create_access_token(user_id: uuid.UUID) -> str:
     payload = {
         "sub": str(user_id),
         "exp": datetime.now(timezone.utc) + timedelta(days=JWT_EXPIRES_DAYS),
         "iat": datetime.now(timezone.utc),
     }
-    return pyjwt.encode(payload, JWT_SECRET_KEY or "dev-secret", algorithm="HS256")
+    return pyjwt.encode(payload, _jwt_secret(), algorithm="HS256")
 
 
 credentials_exception = HTTPException(
@@ -144,10 +178,10 @@ def get_current_user(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(bearer_scheme),
     db: Session = Depends(get_db),
 ) -> User:
-    if credentials is None or JWT_SECRET_KEY == "":
+    if credentials is None:
         raise credentials_exception
     try:
-        payload = pyjwt.decode(credentials.credentials, JWT_SECRET_KEY, algorithms=["HS256"])
+        payload = pyjwt.decode(credentials.credentials, _jwt_secret(), algorithms=["HS256"])
     except pyjwt.PyJWTError:
         raise credentials_exception
     user = db.get(User, uuid.UUID(payload["sub"]))
@@ -214,6 +248,11 @@ class DocumentUploadResponse(BaseModel):
 
 class GoogleAuthRequest(BaseModel):
     credential: str
+
+class EmailAuthRequest(BaseModel):
+    email: str
+    password: str
+    name: str = ""
 
 class UserOut(BaseModel):
     id: str
@@ -420,6 +459,68 @@ async def upload_document(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"فشل تحليل الملف: {str(e)}")
+
+def _hash_password(password: str) -> str:
+    salt = secrets.token_hex(16)
+    digest = hashlib.pbkdf2_hmac("sha256", password.encode("utf-8"), bytes.fromhex(salt), 200_000)
+    return f"{salt}${digest.hex()}"
+
+
+def _verify_password(password: str, stored: str) -> bool:
+    try:
+        salt, digest_hex = stored.split("$", 1)
+        digest = hashlib.pbkdf2_hmac(
+            "sha256", password.encode("utf-8"), bytes.fromhex(salt), 200_000
+        )
+        return secrets.compare_digest(digest.hex(), digest_hex)
+    except Exception:
+        return False
+
+
+@app.post("/api/auth/register", response_model=AuthResponse)
+async def auth_register(request: EmailAuthRequest, db: Session = Depends(get_db)):
+    """Create a new account with email + password"""
+    email = request.email.strip().lower()
+    if "@" not in email:
+        raise HTTPException(status_code=400, detail="بريد إلكتروني غير صالح")
+    if len(request.password) < 6:
+        raise HTTPException(status_code=400, detail="كلمة المرور يجب أن تكون 6 أحرف على الأقل")
+
+    existing = db.query(User).filter(User.email == email).first()
+    if existing is not None:
+        raise HTTPException(status_code=409, detail="هذا البريد مسجّل بالفعل، سجّل دخول")
+
+    user = User(
+        google_sub=f"pwd-{uuid.uuid4().hex}",
+        email=email,
+        name=request.name.strip() or email.split("@")[0],
+        password_hash=_hash_password(request.password),
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+
+    return AuthResponse(access_token=create_access_token(user.id), user=UserOut(
+        id=str(user.id), email=user.email, name=user.name, picture_url=user.picture_url
+    ))
+
+
+@app.post("/api/auth/login", response_model=AuthResponse)
+async def auth_login(request: EmailAuthRequest, db: Session = Depends(get_db)):
+    """Sign in with email + password"""
+    email = request.email.strip().lower()
+    user = db.query(User).filter(User.email == email).first()
+    if (
+        user is None
+        or not user.password_hash
+        or not _verify_password(request.password, user.password_hash)
+    ):
+        raise HTTPException(status_code=401, detail="البريد الإلكتروني أو كلمة المرور غير صحيحة")
+
+    return AuthResponse(access_token=create_access_token(user.id), user=UserOut(
+        id=str(user.id), email=user.email, name=user.name, picture_url=user.picture_url
+    ))
+
 
 @app.post("/api/auth/google", response_model=AuthResponse)
 async def auth_google(request: GoogleAuthRequest, db: Session = Depends(get_db)):

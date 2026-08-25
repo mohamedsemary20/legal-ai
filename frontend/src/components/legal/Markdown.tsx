@@ -8,10 +8,7 @@ export function Markdown({ children }: { children: string }) {
         remarkPlugins={[remarkGfm]}
         components={{
           h1: (p) => (
-            <h1
-              className="mb-3 mt-1 text-xl font-semibold tracking-tight text-primary"
-              {...p}
-            />
+            <h1 className="mb-3 mt-1 text-xl font-semibold tracking-tight text-primary" {...p} />
           ),
           h2: (p) => (
             <h2
@@ -19,9 +16,7 @@ export function Markdown({ children }: { children: string }) {
               {...p}
             />
           ),
-          h3: (p) => (
-            <h3 className="mb-1.5 mt-4 text-sm font-semibold text-gold" {...p} />
-          ),
+          h3: (p) => <h3 className="mb-1.5 mt-4 text-sm font-semibold text-gold" {...p} />,
           p: (p) => <p className="my-2.5 font-light" {...p} />,
           strong: (p) => <strong className="font-semibold text-foreground" {...p} />,
           ul: (p) => <ul className="my-2.5 space-y-1.5 pr-5 [&>li]:list-disc" {...p} />,
@@ -46,12 +41,8 @@ export function Markdown({ children }: { children: string }) {
               {...p}
             />
           ),
-          td: (p) => (
-            <td className="border-b border-hairline/70 px-3 py-2 font-light" {...p} />
-          ),
-          code: (p) => (
-            <code className="rounded bg-muted px-1.5 py-0.5 text-[0.85em]" {...p} />
-          ),
+          td: (p) => <td className="border-b border-hairline/70 px-3 py-2 font-light" {...p} />,
+          code: (p) => <code className="rounded bg-muted px-1.5 py-0.5 text-[0.85em]" {...p} />,
           hr: () => <hr className="my-4 border-hairline" />,
         }}
       >

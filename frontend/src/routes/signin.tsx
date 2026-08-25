@@ -56,12 +56,17 @@ function loadGsiScript(): Promise<void> {
 
 function SignInPage() {
   const { t, lang, dir } = useLang();
-  const { user, initializing, signInWithGoogleCredential } = useAuth();
+  const { user, initializing, signInWithGoogleCredential, signInWithEmail, signUpWithEmail } =
+    useAuth();
   const navigate = useNavigate();
   const { expired: isExpired } = Route.useSearch();
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [mode, setMode] = useState<"signin" | "signup">("signin");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [name, setName] = useState("");
   const buttonRef = useRef<HTMLDivElement>(null);
 
   const clientId = import.meta.env["VITE_GOOGLE_CLIENT_ID"] as string | undefined;
@@ -70,6 +75,27 @@ function SignInPage() {
   useEffect(() => {
     if (!initializing && user) navigate({ to: "/", replace: true });
   }, [initializing, user, navigate]);
+
+  async function handleEmailSubmit(e: React.FormEvent) {
+    e.preventDefault();
+    setError(null);
+    setLoading(true);
+    try {
+      if (mode === "signup") {
+        await signUpWithEmail(name, email, password);
+      } else {
+        await signInWithEmail(email, password);
+      }
+      navigate({ to: "/", replace: true });
+    } catch (err) {
+      const msg =
+        err instanceof Error && err.message !== "Failed to fetch" ? err.message : t.signinError;
+      setError(msg);
+      toast.error(t.signinError, { description: msg });
+    } finally {
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
     if (!clientId || user || initializing) return;
@@ -140,19 +166,96 @@ function SignInPage() {
         )}
 
         {/* Google button / loading state */}
-        <div className="mt-6 flex min-h-[44px] items-center justify-center">
-          {loading ? (
-            <button
-              disabled
-              className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-primary/90 text-sm font-medium text-primary-foreground"
-            >
-              <Loader2 className="size-4 animate-spin" />
-              {t.signinWorking}
-            </button>
-          ) : (
-            <div ref={buttonRef} className="flex w-full justify-center" />
+        {clientId && (
+          <div className="mt-6 flex min-h-[44px] items-center justify-center">
+            {!loading && <div ref={buttonRef} className="flex w-full justify-center" />}
+          </div>
+        )}
+
+        {clientId && (
+          <div className="mt-5 flex items-center gap-3">
+            <span className="h-px flex-1 bg-hairline" />
+            <span className="text-[11px] font-light text-muted-foreground">{t.orEmail}</span>
+            <span className="h-px flex-1 bg-hairline" />
+          </div>
+        )}
+
+        {/* Email / password form */}
+        <form onSubmit={handleEmailSubmit} className="mt-5 space-y-3 text-start">
+          {mode === "signup" && (
+            <label className="block">
+              <span className="mb-1 block text-[12px] font-medium text-muted-foreground">
+                {t.signinName}
+              </span>
+              <input
+                type="text"
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                autoComplete="name"
+                dir="auto"
+                className="h-11 w-full rounded-lg border border-hairline bg-background px-3 text-sm outline-none focus:border-primary"
+              />
+            </label>
           )}
-        </div>
+          <label className="block">
+            <span className="mb-1 block text-[12px] font-medium text-muted-foreground">
+              {t.signinEmail}
+            </span>
+            <input
+              type="email"
+              required
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              autoComplete="email"
+              dir="ltr"
+              className="h-11 w-full rounded-lg border border-hairline bg-background px-3 text-sm outline-none focus:border-primary"
+            />
+          </label>
+          <label className="block">
+            <span className="mb-1 block text-[12px] font-medium text-muted-foreground">
+              {t.signinPassword}
+            </span>
+            <input
+              type="password"
+              required
+              minLength={6}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              autoComplete={mode === "signup" ? "new-password" : "current-password"}
+              dir="ltr"
+              className="h-11 w-full rounded-lg border border-hairline bg-background px-3 text-sm outline-none focus:border-primary"
+            />
+          </label>
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-primary text-sm font-medium text-primary-foreground shadow-soft transition hover:bg-primary/90 disabled:opacity-60"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                {t.signinWorking}
+              </>
+            ) : mode === "signup" ? (
+              t.signupButton
+            ) : (
+              t.signinWithEmail
+            )}
+          </button>
+        </form>
+
+        {/* Toggle sign in / sign up */}
+        <button
+          type="button"
+          onClick={() => {
+            setMode(mode === "signin" ? "signup" : "signin");
+            setError(null);
+          }}
+          className="mt-4 text-[12px] font-medium text-gold underline-offset-4 hover:underline"
+        >
+          {mode === "signin" ? t.signupSwitch : t.signinSwitch}
+        </button>
 
         {/* Inline auth error */}
         {error && !loading && (

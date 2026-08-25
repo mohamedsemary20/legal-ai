@@ -24,6 +24,8 @@ type Ctx = {
   /** True until we know whether an existing token is still valid */
   initializing: boolean;
   signInWithGoogleCredential: (credential: string) => Promise<void>;
+  signInWithEmail: (email: string, password: string) => Promise<void>;
+  signUpWithEmail: (name: string, email: string, password: string) => Promise<void>;
   signOut: () => void;
 };
 
@@ -95,6 +97,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(data.user);
   }
 
+  async function emailAuthRequest(
+    endpoint: "login" | "register",
+    body: { email: string; password: string; name?: string },
+  ) {
+    const res = await fetch(
+      `${import.meta.env["VITE_API_URL"] ?? "http://localhost:8000"}/api/auth/${endpoint}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+      },
+    );
+    if (!res.ok) {
+      let detail = endpoint === "register" ? "Sign-up failed" : "Sign-in failed";
+      try {
+        const j = await res.json();
+        if (typeof j?.detail === "string") detail = j.detail;
+      } catch {
+        /* ignore */
+      }
+      throw new Error(detail);
+    }
+    const data = (await res.json()) as { access_token: string; user: AuthUser };
+    try {
+      localStorage.setItem(TOKEN_KEY, data.access_token);
+    } catch {
+      /* ignore */
+    }
+    setToken(data.access_token);
+    setUser(data.user);
+  }
+
+  function signInWithEmail(email: string, password: string) {
+    return emailAuthRequest("login", { email, password });
+  }
+
+  function signUpWithEmail(name: string, email: string, password: string) {
+    return emailAuthRequest("register", { name, email, password });
+  }
+
   function clearToken() {
     try {
       localStorage.removeItem(TOKEN_KEY);
@@ -112,7 +154,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   return (
     <AuthContext.Provider
-      value={{ token, user, initializing, signInWithGoogleCredential, signOut }}
+      value={{
+        token,
+        user,
+        initializing,
+        signInWithGoogleCredential,
+        signInWithEmail,
+        signUpWithEmail,
+        signOut,
+      }}
     >
       {children}
     </AuthContext.Provider>

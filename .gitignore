@@ -36,3 +36,6 @@ frontend/.vite/
 frontend/.nitro/
 frontend/.output/
 frontend/.tanstack/
+
+# Local dev database
+local_dev.db

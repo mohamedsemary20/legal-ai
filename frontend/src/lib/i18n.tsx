@@ -103,6 +103,15 @@ const ar = {
   signinExpired: "انتهت الجلسة، سجّل دخول تاني",
   signinError: "تعذّر تسجيل الدخول",
   signinWorking: "جارٍ تسجيل الدخول...",
+  signinEmail: "البريد الإلكتروني",
+  signinPassword: "كلمة المرور",
+  signinName: "الاسم",
+  signinWithEmail: "تسجيل الدخول",
+  signupSwitch: "ما عندك حساب؟ أنشئ حساب جديد",
+  signinSwitch: "عندك حساب بالفعل؟ سجّل دخول",
+  signupTitle: "إنشاء حساب",
+  signupButton: "إنشاء الحساب",
+  orEmail: "أو بالبريد الإلكتروني",
   signOut: "تسجيل الخروج",
 };
 
@@ -218,6 +227,15 @@ const en: Dict = {
   signinExpired: "Your session ended — please sign in again",
   signinError: "Sign-in failed",
   signinWorking: "Signing in...",
+  signinEmail: "Email",
+  signinPassword: "Password",
+  signinName: "Name",
+  signinWithEmail: "Sign in",
+  signupSwitch: "No account? Create one",
+  signinSwitch: "Already have an account? Sign in",
+  signupTitle: "Create account",
+  signupButton: "Create account",
+  orEmail: "or with email",
   signOut: "Sign out",
 };
 
